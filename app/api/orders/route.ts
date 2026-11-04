@@ -63,6 +63,12 @@ export async function POST(req: NextRequest) {
       .where(eq(coupons.id, coupon.id))
   }
 
+  const allowedMethods = new Set(['USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
+  const selectedPaymentMethod = pmRows[0]
+  if (!allowedMethods.has(data.paymentMethod) || (selectedPaymentMethod && !selectedPaymentMethod.active)) {
+    return NextResponse.json({ error: 'This payment method is not currently available' }, { status: 400 })
+  }
+
   // ── Resolve wallet address ────────────────────────────────────────────────
   const WALLETS: Record<string, string | undefined> = {
     USDT_TRC20:  settingsData.walletTrc20,
@@ -84,6 +90,7 @@ export async function POST(req: NextRequest) {
 
   let walletAddress = pmRows[0]?.walletAddress?.trim() || (WALLETS[data.paymentMethod] ?? '')
   const orderNumber = generateOrderNumber()
+  const trackingToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
 
   // ── Heleket: create a hosted invoice; its URL is the payment destination ──
   let heleketUuid: string | null = null
@@ -135,6 +142,7 @@ export async function POST(req: NextRequest) {
       .insert(orders)
       .values({
         orderNumber,
+        trackingToken,
         packageId:     pkg.id,
         diamonds:      pkg.diamonds + giftDiamonds,
         playerUid:     data.playerUid,
@@ -154,5 +162,9 @@ export async function POST(req: NextRequest) {
       .returning()
   )[0]
 
-  return NextResponse.json({ order: inserted, paymentUrl: heleketUuid || plisioUrl ? walletAddress : null })
+  return NextResponse.json({
+    order: inserted,
+    trackingToken,
+    paymentUrl: heleketUuid || plisioUrl ? walletAddress : null,
+  })
 }

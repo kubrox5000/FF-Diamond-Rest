@@ -3,7 +3,7 @@ import type { MetadataRoute } from 'next'
 export const dynamic = 'force-static'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://diamondboost.gg'
+  const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://ff-diamond.rest'
   const now = new Date()
   return [
     { url: `${base}/`, lastModified: now, changeFrequency: 'daily', priority: 1 },
@@ -14,5 +14,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/refund`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${base}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${base}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${base}/cookies`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ]
 }

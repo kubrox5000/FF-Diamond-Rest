@@ -5,15 +5,14 @@ import { Phone, Mail, MapPin, Clock, Instagram, Facebook, Twitter, Youtube, Musi
 import type { SiteSettings } from '@/lib/settings'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
 import { SiteBrand } from '@/components/site/SiteBrand'
-import { OfficialFooterBadge } from '@/components/site/OfficialBadge'
 
 const payments = [
-  { label: 'G Pay', className: 'bg-white text-black' },
-  { label: 'Pay', className: 'bg-black text-white ring-1 ring-white/20' },
-  { label: 'PayPal', className: 'bg-[#003087] text-white' },
-  { label: 'AMEX', className: 'bg-[#1f72cd] text-white' },
-  { label: 'MC', className: 'bg-[#eb001b] text-white' },
-  { label: 'VISA', className: 'bg-[#1a1f71] text-white' },
+  { label: 'USDT', className: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30' },
+  { label: 'BTC', className: 'bg-orange-500/15 text-orange-300 ring-1 ring-orange-400/30' },
+  { label: 'ETH', className: 'bg-sky-500/15 text-sky-300 ring-1 ring-sky-400/30' },
+  { label: 'SOL', className: 'bg-violet-500/15 text-violet-300 ring-1 ring-violet-400/30' },
+  { label: 'LTC', className: 'bg-slate-500/15 text-slate-300 ring-1 ring-slate-400/30' },
+  { label: 'BNB', className: 'bg-yellow-500/15 text-yellow-300 ring-1 ring-yellow-400/30' },
 ]
 
 export function SiteFooter({ settings }: { settings: SiteSettings }) {
@@ -48,8 +47,6 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
               {t('foot_desc')}
             </p>
-
-            <OfficialFooterBadge />
 
             {tg && (
               <a

@@ -46,8 +46,12 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Fallback: credentials from environment variables ──
-  const envUser = process.env.ADMIN_USERNAME || 'admin'
-  const envPass = process.env.ADMIN_PASSWORD || 'admin123'
+  const envUser = process.env.ADMIN_USERNAME
+  const envPass = process.env.ADMIN_PASSWORD
+
+  if (!envUser || !envPass) {
+    return NextResponse.json({ error: 'Admin authentication is not configured' }, { status: 503 })
+  }
 
   if (username !== envUser || password !== envPass) {
     return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 })

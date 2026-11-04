@@ -22,12 +22,12 @@ export const ar = {
   feat_instant: 'توصيل فوري',
   feat_secure: 'أمان 100%',
   feat_support: 'دعم 24/7',
-  feat_customers: '+50K عميل سعيد',
+  feat_customers: 'خدمة مستقلة للاعبين',
 
   // Package card
   pkg_flash: 'عرض خاطف',
   pkg_popular: 'الأكثر مبيعًا',
-  official_badge: 'موزع رسمي معتمد',
+  official_badge: 'خدمة شحن مستقلة',
   official_desc: 'متجرنا معتمد رسمياً من المورد الرسمي للعبة Free Fire',
   official_verified: 'موثّق ومعتمد',
   official_reseller: 'موزع رسمي',

@@ -27,6 +27,7 @@ export interface PublicPaymentMethod {
 export interface PublicOrder {
   id: number
   orderNumber: string
+  trackingToken?: string
   packageId: number
   diamonds: number
   playerUid: string

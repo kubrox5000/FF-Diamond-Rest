@@ -29,6 +29,7 @@ export const packages = pgTable('packages', {
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
   orderNumber: text('order_number').notNull().unique(),
+  trackingToken: text('tracking_token').notNull().unique(),
   packageId: integer('package_id').notNull(),
   diamonds: integer('diamonds').notNull(),
   playerUid: text('player_uid').notNull(),

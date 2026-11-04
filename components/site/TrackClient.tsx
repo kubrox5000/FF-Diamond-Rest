@@ -16,15 +16,16 @@ const TIMELINE: OrderStatus[] = ['pending_payment', 'payment_review', 'paid', 'p
 export function TrackClient() {
   const params = useSearchParams()
   const { t } = useLocale()
-  const [query, setQuery] = useState(params.get('q') ?? params.get('order') ?? '')
+  const [query, setQuery] = useState(params.get('order') ?? '')
+  const [token, setToken] = useState(params.get('token') ?? '')
   const [loading, setLoading] = useState(false)
   const [orders, setOrders] = useState<PublicOrder[] | null>(null)
 
-  const search = useCallback(async (q: string) => {
-    if (!q.trim()) return
+  const search = useCallback(async (order: string, privateToken: string) => {
+    if (!order.trim() || !privateToken.trim()) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/track?q=${encodeURIComponent(q.trim())}`)
+      const res = await fetch(`/api/track?order=${encodeURIComponent(order.trim())}&token=${encodeURIComponent(privateToken.trim())}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t('tr_failed'))
       setOrders(data.orders)
@@ -38,8 +39,9 @@ export function TrackClient() {
   }, [t])
 
   useEffect(() => {
-    const q = params.get('q') ?? params.get('order')
-    if (q) search(q)
+    const order = params.get('order')
+    const privateToken = params.get('token')
+    if (order && privateToken) search(order, privateToken)
   }, [params, search])
 
   return (
@@ -47,14 +49,23 @@ export function TrackClient() {
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          search(query)
+          search(query, token)
         }}
         className="glass mx-auto flex max-w-xl gap-2 rounded-2xl border border-border p-2"
       >
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('tr_ph')}
+          placeholder="Order number"
+          aria-label="Order number"
+          translate="no"
+          className="input-base flex-1 border-0 bg-transparent focus:ring-0"
+        />
+        <input
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          placeholder="Private tracking token"
+          aria-label="Private tracking token"
           translate="no"
           className="input-base flex-1 border-0 bg-transparent focus:ring-0"
         />

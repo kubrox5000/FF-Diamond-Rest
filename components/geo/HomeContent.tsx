@@ -6,7 +6,6 @@ import { memo, useMemo } from 'react'
 import { ShieldCheck, Rocket, HeartHandshake, BadgePercent } from 'lucide-react'
 import { Hero } from '@/components/site/Hero'
 import { PackageCard } from '@/components/site/PackageCard'
-import { OfficialBannerSection } from '@/components/site/OfficialBadge'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
 import type { PublicPackage, PublicReview } from '@/lib/types'
 
@@ -50,9 +49,6 @@ export function HomeContent({ pkgs, reviews, totalReviews, averageRating, freeGi
   return (
     <main>
       <Hero />
-
-      {/* Official Authorized Reseller Banner */}
-      <OfficialBannerSection />
 
       {/* Packages */}
       <section id="packages" className="mx-auto max-w-7xl px-4 py-16 sm:px-6">

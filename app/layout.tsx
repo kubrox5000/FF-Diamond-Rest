@@ -37,7 +37,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   ...jsonMetadata,
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://diamondboost.gg'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://ff-diamond.rest'),
   applicationName: 'FF Diamond',
   openGraph: {
     title: jsonMetadata.title,

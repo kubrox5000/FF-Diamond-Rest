@@ -8,7 +8,6 @@ import FloatingSupport from '@/components/site/LazySupport'
 import { TopUpForm } from '@/components/site/TopUpForm'
 import { PageHeader } from '@/components/geo/PageHeader'
 import { LocalizedTitle } from '@/components/geo/LocalizedTitle'
-import { OfficialBannerSection } from '@/components/site/OfficialBadge'
 import { getSettings } from '@/lib/settings'
 import { SEED_PACKAGES, SEED_PAYMENT_METHODS } from '@/lib/seed-data'
 import type { PublicPackage, PublicPaymentMethod } from '@/lib/types'
@@ -49,9 +48,7 @@ export default async function TopUpPage() {
       <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         <PageHeader kicker="top_kicker" title="top_title" sub="top_sub" />
 
-        <OfficialBannerSection />
-
-        <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-secondary/40" />}>
+          <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-secondary/40" />}>
           <TopUpForm packages={pkgRows} paymentMethods={withPlisio(await withAtlos(withHeleket(methods)))} freeGift={settings.freeGift} />
         </Suspense>
       </main>
