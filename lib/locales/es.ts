@@ -22,12 +22,12 @@ export const es = {
   feat_instant: 'Entrega instantánea',
   feat_secure: '100% seguro',
   feat_support: 'Soporte 24/7',
-  feat_customers: '+50K clientes felices',
+  feat_customers: 'Servicio independiente para jugadores',
 
   // Package card
   pkg_flash: 'Oferta relámpago',
   pkg_popular: 'Más vendido',
-  official_badge: 'Revendedor oficial autorizado',
+  official_badge: 'Servicio de recarga independiente',
   official_desc: 'Nuestra tienda está oficialmente autorizada por el proveedor oficial de Free Fire',
   official_verified: 'Verificado y Certificado',
   official_reseller: 'Revendedor oficial',

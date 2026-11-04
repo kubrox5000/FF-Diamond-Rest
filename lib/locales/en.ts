@@ -22,12 +22,12 @@ export const en = {
   feat_instant: 'Instant Delivery',
   feat_secure: '100% Secure',
   feat_support: '24/7 Support',
-  feat_customers: '+50K Happy Customers',
+  feat_customers: 'Trusted by players',
 
   // Package card
   pkg_flash: 'Flash Sale',
   pkg_popular: 'Best Seller',
-  official_badge: 'Official Authorized Reseller',
+  official_badge: 'Independent top-up service',
   official_desc: 'Our store is officially authorized by the official supplier of Free Fire',
   official_verified: 'Verified & Certified',
   official_reseller: 'Official Reseller',
@@ -224,7 +224,7 @@ export const en = {
   tr_kicker: 'Order Tracking',
   tr_title: 'Track Your Order',
   tr_sub: 'Enter your order number or Player ID to see the live status of your top-up.',
-  tr_ph: 'Order number or Player ID',
+  tr_ph: 'Order number and private tracking token',
   tr_btn: 'Track',
   tr_none: 'No orders found',
   tr_none_sub: 'Double-check your order number or ID, or start a new order.',

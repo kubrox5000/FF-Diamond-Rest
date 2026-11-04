@@ -49,7 +49,7 @@ export default async function HomePage() {
   const totalReviews = 2400 + reviewRows.length
   const averageRating = reviewRows.length > 0 ? reviewRows.reduce((s, r) => s + r.rating, 0) / reviewRows.length : 4.9
 
-  const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://diamondboost.gg'
+  const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://ff-diamond.rest'
 
   const jsonLd = {
     '@context': 'https://schema.org',

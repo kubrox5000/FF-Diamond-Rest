@@ -35,12 +35,12 @@ const CONTENT: Record<PolicyKey, Partial<Record<Lang, PolicyContent>>> = {
     en: {
       title: 'Privacy Policy',
       updated: 'Last updated: January 1, 2026',
-      intro: 'We respect your privacy and are committed to protecting your personal data.',
+      intro: 'FF Diamond LLC, an independent top-up service based in the United States, collects and processes only the information needed to provide support, process orders, and protect the service. We are not affiliated with or endorsed by Garena unless expressly stated in a separate written notice.',
       sections: [
-        { h: 'Information we collect', b: 'We only collect the data needed to fulfill your order, such as your Player ID (UID), order number and basic payment details.' },
+        { h: 'Information we collect', b: 'We collect the Player ID, order details, selected payment method, and optional contact details you submit. We do not ask for your Free Fire password or account credentials.' },
         { h: 'How we use your data', b: 'We use your data to process orders, deliver diamonds, provide support and improve your experience.' },
         { h: 'Data sharing', b: 'We never sell your data. We only share it with parties strictly necessary to process payments.' },
-        { h: 'Security', b: 'We use industry-standard encryption to protect your data in transit and at rest.' },
+        { h: 'Security', b: 'We use HTTPS, server-side validation, restricted administrative access, and payment-provider controls. No online service can guarantee absolute security.' },
         { h: 'Your rights', b: 'You may request access to, correction or deletion of your data at any time.' },
         { h: 'Cookies', b: 'We may use cookies to improve browsing and remember your language and currency preferences.' },
         { h: 'Contact', b: 'For any questions about this policy, reach out via Telegram or our official support email.' },
@@ -150,14 +150,15 @@ const CONTENT: Record<PolicyKey, Partial<Record<Lang, PolicyContent>>> = {
     en: {
       title: 'Refund Policy',
       updated: 'Last updated: January 1, 2026',
-      intro: 'We aim for your full satisfaction. If you run into a problem with your order, this is how refunds work.',
+      intro: 'These rules apply to FF Diamond LLC orders and are subject to applicable consumer-protection laws in the jurisdictions where we operate.',
       sections: [
-        { h: 'Failed delivery', b: 'If diamonds do not arrive within the promised timeframe, you are entitled to a full refund or a re-send.' },
-        { h: 'Wrong identifier', b: 'If you entered the wrong Player ID, notify us immediately before delivery begins.' },
+        { h: 'Failed delivery', b: 'If payment is received but the diamonds are not successfully delivered, you may request a full refund.' },
+        { h: 'Wrong identifier', b: 'If you entered the wrong Player ID, notify us immediately before delivery begins. No refund is available after a successful top-up to the incorrect UID supplied by the customer.' },
+        { h: 'Cancellation', b: 'You may request cancellation before the top-up is executed. Payment confirmation does not by itself mean the top-up has been executed.' },
         { h: 'User mistakes', b: 'We are not responsible for errors caused by incorrect details entered after the order is processed.' },
         { h: 'Non-refundable orders', b: 'Once diamonds are successfully delivered, orders are non-refundable due to their digital nature.' },
         { h: 'Rejected claims', b: 'We reserve the right to refuse refund claims that violate our general terms.' },
-        { h: 'How to request a refund', b: 'Contact us on Telegram within 7 days of purchase with your order number.' },
+        { h: 'How to request a refund', b: 'Contact support with your order number and payment evidence. We review the request and initiate an approved refund; processing time varies by payment provider and no fixed timeframe is promised.' },
       ],
     },
     fr: {
@@ -206,7 +207,7 @@ const CONTENT: Record<PolicyKey, Partial<Record<Lang, PolicyContent>>> = {
       updated: 'Last updated: January 1, 2026',
       intro: 'We provide fast, automated delivery to your game ID.',
       sections: [
-        { h: 'Delivery time', b: 'Most orders are delivered within 2-30 minutes.' },
+        { h: 'Delivery time', b: 'Normal delivery is usually completed within 1–5 minutes after payment confirmation and validation. Occasional provider or network delays may occur.' },
         { h: 'Delivery method', b: 'Diamonds are sent instantly to the Player ID (UID) you entered at checkout.' },
         { h: 'Account requirements', b: 'Make sure your Player ID is correct and your account allows incoming shipments.' },
         { h: 'Bonus diamonds', b: 'Some packages include bonus diamonds that are added automatically.' },
