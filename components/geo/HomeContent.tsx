@@ -1,18 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import { ShieldCheck, Rocket, HeartHandshake, BadgePercent } from 'lucide-react'
 import { Hero } from '@/components/site/Hero'
 import { PackageCard } from '@/components/site/PackageCard'
+import { HowItWorks } from '@/components/site/HowItWorks'
+import { FaqSection } from '@/components/site/FaqSection'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
 import type { PublicPackage } from '@/lib/types'
-
-// Below-fold sections are code-split (separate chunks) but still server-rendered
-// so their content appears immediately in the first HTML — no blank wait.
-const HowItWorks        = dynamic(() => import('@/components/site/HowItWorks').then(m => ({ default: m.HowItWorks })))
-const FaqSection        = dynamic(() => import('@/components/site/FaqSection').then(m => ({ default: m.FaqSection })))
 
 interface Props {
   pkgs: PublicPackage[]
