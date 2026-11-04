@@ -65,7 +65,7 @@ export function Hero() {
               className="hero-fade hero-fade-5 flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/80 p-4"
             >
               <f.icon className={`h-6 w-6 ${f.color}`} />
-              <span className="text-xs font-semibold sm:text-sm">{f.label}</span>
+              <span suppressHydrationWarning className="text-xs font-semibold sm:text-sm">{f.label}</span>
             </div>
           ))}
         </div>
