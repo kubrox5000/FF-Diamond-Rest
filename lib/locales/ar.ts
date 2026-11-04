@@ -21,7 +21,7 @@ export const ar = {
   hero_track: 'تتبع طلبي',
   feat_instant: 'توصيل فوري',
   feat_secure: 'أمان 100%',
-  feat_support: 'دعم 24/7',
+  feat_support: 'دعم خلال الساعات المعلنة',
   feat_customers: 'خدمة مستقلة للاعبين',
 
   // Package card

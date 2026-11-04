@@ -16,12 +16,12 @@ export const en = {
   hero_instant: 'Instant Delivery',
   hero_title1: 'Get',
   hero_title2: 'Free Fire Diamonds',
-  hero_tagline: 'The fastest and safest way to top up your Free Fire diamonds.',
+  hero_tagline: 'A clear, independent way to top up Free Fire diamonds using your Player UID.',
   hero_topup: 'Top Up Now',
   hero_track: 'Track My Order',
   feat_instant: 'Instant Delivery',
-  feat_secure: '100% Secure',
-  feat_support: '24/7 Support',
+  feat_secure: 'Secure checkout',
+  feat_support: 'Human support',
   feat_customers: 'Trusted by players',
 
   // Package card
@@ -62,14 +62,14 @@ export const en = {
   why2_d: 'Encrypted payments and zero account access keep you fully protected.',
   why3_t: 'Best Prices',
   why3_d: 'Frequent flash sales and bonus diamonds you won’t find anywhere else.',
-  why4_t: '24/7 Support',
+  why4_t: 'Support during listed hours',
   why4_d: 'Real humans on Telegram whenever you need a hand.',
   reviews_title: 'Our Customers Say',
   reviews_sub: 'Real reviews from players around the world',
   home_faq_kicker: 'FAQ',
   home_faq_title: 'Frequently Asked Questions',
   home_cta_title: 'Ready to boost your account?',
-  home_cta_sub: 'Join thousands of players topping up the fast, safe and affordable way.',
+  home_cta_sub: 'Choose a package, pay through a supported network, and track your order privately.',
   home_cta_btn: 'Top Up Free Fire Diamonds',
 
   // How it works
@@ -85,17 +85,17 @@ export const en = {
 
   // FAQ
   faq1_q: 'How fast will I receive my diamonds?',
-  faq1_a: 'Most orders are delivered within 1–15 minutes after your payment is confirmed. Larger packages may take slightly longer during peak hours.',
+  faq1_a: 'Usually within 1–5 minutes after payment confirmation and validation. Occasional payment-provider or network delays may occur.',
   faq2_q: 'Do I need to give my account password?',
-  faq2_a: 'Never. We only need your Player UID and server. We never ask for your login details, so your account stays 100% safe.',
+  faq2_a: 'Never. We only need your Player UID and server. Do not share your Free Fire password or account credentials with us.',
   faq3_q: 'Which payment methods do you accept?',
-  faq3_a: 'We accept USDT on both the TRC20 (Tron) and BEP20 (BNB Smart Chain) networks. Simply send the exact amount to the address shown and submit your transaction ID.',
+  faq3_a: 'We currently support USDT, BTC, ETH, SOL, LTC, BUSD, and BNB on the network shown at checkout. Only use the displayed address and network, and send the exact amount.',
   faq4_q: 'Is topping up safe? Will I get banned?',
-  faq4_a: 'Yes, our top-up method is safe and does not violate any terms. We have delivered to thousands of players with zero bans.',
+  faq4_a: 'We do not request account passwords or credentials. You should review the game publisher’s rules and use the service only where permitted; we cannot guarantee account outcomes.',
   faq5_q: 'What if I entered the wrong UID?',
-  faq5_a: 'Contact our 24/7 support immediately through Telegram with your order number. We can correct it before processing.',
-  faq6_q: 'How do I track my order?',
-  faq6_a: 'Use the Track Order page and enter your order number or Player ID to see the live status of your purchase.',
+  faq5_a: 'Contact support immediately with your order number before the top-up is executed. After successful delivery to the incorrect UID supplied by the customer, refunds are generally unavailable subject to applicable law.',
+  faq6_q: 'How do I track my order and contact support?',
+  faq6_a: 'Use the Track Order page with both your order number and private tracking token. Player UID alone cannot be used to view orders.',
 
   // Top-up page
   top_kicker: 'Free Fire Top-Up',
@@ -223,7 +223,7 @@ export const en = {
   // Track page
   tr_kicker: 'Order Tracking',
   tr_title: 'Track Your Order',
-  tr_sub: 'Enter your order number or Player ID to see the live status of your top-up.',
+  tr_sub: 'Enter your order number and private tracking token to see the live status of your top-up.',
   tr_ph: 'Order number and private tracking token',
   tr_btn: 'Track',
   tr_none: 'No orders found',
@@ -245,12 +245,12 @@ export const en = {
   st_cancelled: 'Cancelled',
 
   // Footer
-  foot_tagline: 'The #1 store to top up Free Fire in the region',
-  foot_desc: 'We offer the fastest and safest way to top up Free Fire diamonds at competitive prices. Instant delivery via Player ID, secure encrypted payments, and 24/7 support.',
+  foot_tagline: 'Independent Free Fire top-up service',
+  foot_desc: 'Top up with your Player UID using supported cryptocurrency networks. Delivery is usually within 1–5 minutes after payment confirmation and validation; occasional delays may occur.',
   foot_wa: 'Contact via Telegram',
   foot_contact: 'Contact Us',
   foot_links: 'Important Links',
-  foot_safe: 'All payments are safe and encrypted',
+  foot_safe: 'Payments use the selected network and provider controls',
   foot_rights: '© {year} FF Diamond. All rights reserved.',
   foot_home: 'Home',
   foot_how: 'How does it work?',
@@ -264,7 +264,7 @@ export const en = {
   foot_phone: 'Phone',
   foot_email: 'Email',
   foot_address: 'Address',
-  foot_hours: 'Hours',
+  foot_hours: 'Support hours',
 
   // Floating support
   float_support: 'Support',
@@ -273,17 +273,17 @@ export const en = {
   float_dc: 'Discord',
 
   // Reviews / testimonials
-  rev_based: 'Based on',
-  rev_reviews: 'reviews',
-  rev_excellent: 'Excellent',
-  rev_title: 'Our Customers Say',
-  rev_sub: 'Real reviews from players around the world',
-  rev_verified: 'Verified buyer',
-  rev_powered: 'Powered by',
+  rev_based: 'Customer feedback',
+  rev_reviews: 'published reviews',
+  rev_excellent: 'Customer feedback',
+  rev_title: 'Customer feedback',
+  rev_sub: 'Only publish reviews that are authentic and verifiable',
+  rev_verified: 'Verified order',
+  rev_powered: 'Independent customer feedback',
   rev_default: 'Great experience!',
   tst_title: 'What Our Customers Say',
-  tst_sub: 'Real reviews from players who bought from us',
-  tst_verified: 'Verified customer',
+  tst_sub: 'Only publish authentic, verifiable customer feedback',
+  tst_verified: 'Verified order',
   show_more: 'Show more reviews',
   show_less: 'Show less',
 

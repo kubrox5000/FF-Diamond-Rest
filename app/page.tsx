@@ -1,6 +1,6 @@
 import { db } from '@/db'
-import { packages, reviews } from '@/db/schemas'
-import { eq, asc, desc } from 'drizzle-orm'
+import { packages } from '@/db/schemas'
+import { eq, asc } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { SiteNav } from '@/components/site/SiteNav'
 import { SiteFooter } from '@/components/site/SiteFooter'
@@ -10,8 +10,8 @@ import { HomeContent } from '@/components/geo/HomeContent'
 import { LocalizedTitle } from '@/components/geo/LocalizedTitle'
 import { getSettings } from '@/lib/settings'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
-import { SEED_PACKAGES, SEED_REVIEWS } from '@/lib/seed-data'
-import type { PublicPackage, PublicReview } from '@/lib/types'
+import { SEED_PACKAGES } from '@/lib/seed-data'
+import type { PublicPackage } from '@/lib/types'
 import { localizedPageMetadata } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
@@ -24,8 +24,6 @@ export default async function HomePage() {
   const settings = await getSettings()
 
   let pkgRows: PublicPackage[] = SEED_PACKAGES
-  let reviewRows: PublicReview[] = SEED_REVIEWS
-
   if (isDatabaseConfigured()) {
     try {
       const getCachedPackages = unstable_cache(
@@ -34,20 +32,11 @@ export default async function HomePage() {
         ['home-packages'],
         { revalidate: 300, tags: ['home'] },
       )
-      const getCachedReviews = unstable_cache(
-        async () => db.select().from(reviews).orderBy(desc(reviews.createdAt)).limit(60),
-        ['home-reviews'],
-        { revalidate: 300, tags: ['home'] },
-      )
       pkgRows = ((await getCachedPackages()) as unknown) as PublicPackage[]
-      reviewRows = ((await getCachedReviews()) as unknown) as PublicReview[]
     } catch {
       // fallback to seed data if DB is unreachable
     }
   }
-
-  const totalReviews = 2400 + reviewRows.length
-  const averageRating = reviewRows.length > 0 ? reviewRows.reduce((s, r) => s + r.rating, 0) / reviewRows.length : 4.9
 
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://ff-diamond.rest'
 
@@ -98,9 +87,6 @@ export default async function HomePage() {
 
       <HomeContent
         pkgs={pkgRows}
-        reviews={reviewRows}
-        totalReviews={totalReviews}
-        averageRating={averageRating}
         freeGift={settings.freeGift}
       />
 

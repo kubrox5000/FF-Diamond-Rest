@@ -63,7 +63,7 @@ export const reviews = pgTable('reviews', {
   country: text('country'),
   countryCode: text('country_code'),
   packageLabel: text('package_label'),
-  verified: boolean('verified').notNull().default(true),
+  verified: boolean('verified').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

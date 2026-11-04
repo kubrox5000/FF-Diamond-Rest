@@ -205,14 +205,14 @@ const CONTENT: Record<PolicyKey, Partial<Record<Lang, PolicyContent>>> = {
     en: {
       title: 'Delivery Policy',
       updated: 'Last updated: January 1, 2026',
-      intro: 'We provide fast, automated delivery to your game ID.',
+      intro: 'FF Diamond LLC provides top-up delivery to the Player UID submitted at checkout. We are an independent service and do not request account passwords.',
       sections: [
         { h: 'Delivery time', b: 'Normal delivery is usually completed within 1–5 minutes after payment confirmation and validation. Occasional provider or network delays may occur.' },
         { h: 'Delivery method', b: 'Diamonds are sent instantly to the Player ID (UID) you entered at checkout.' },
         { h: 'Account requirements', b: 'Make sure your Player ID is correct and your account allows incoming shipments.' },
         { h: 'Bonus diamonds', b: 'Some packages include bonus diamonds that are added automatically.' },
         { h: 'Delays', b: 'In rare cases delivery may be delayed. Contact support for updates.' },
-        { h: 'Order tracking', b: 'Use the Track Order page with your order number or Player ID to see the live status.' },
+        { h: 'Order tracking', b: 'Use the Track Order page with both your order number and private tracking token. Player UID alone cannot be used to view orders.' },
       ],
     },
     fr: {

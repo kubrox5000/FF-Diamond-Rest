@@ -7,21 +7,15 @@ import { ShieldCheck, Rocket, HeartHandshake, BadgePercent } from 'lucide-react'
 import { Hero } from '@/components/site/Hero'
 import { PackageCard } from '@/components/site/PackageCard'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
-import type { PublicPackage, PublicReview } from '@/lib/types'
+import type { PublicPackage } from '@/lib/types'
 
 // Below-fold sections are code-split (separate chunks) but still server-rendered
 // so their content appears immediately in the first HTML — no blank wait.
 const HowItWorks        = dynamic(() => import('@/components/site/HowItWorks').then(m => ({ default: m.HowItWorks })))
-const TrustpilotReviews = dynamic(() => import('@/components/site/TrustpilotReviews').then(m => ({ default: m.TrustpilotReviews })))
-const TrustpilotFooter  = dynamic(() => import('@/components/site/TrustpilotReviews').then(m => ({ default: m.TrustpilotFooter })))
-const CustomerTestimonials = dynamic(() => import('@/components/site/CustomerTestimonials').then(m => ({ default: m.CustomerTestimonials })))
 const FaqSection        = dynamic(() => import('@/components/site/FaqSection').then(m => ({ default: m.FaqSection })))
 
 interface Props {
   pkgs: PublicPackage[]
-  reviews: PublicReview[]
-  totalReviews: number
-  averageRating: number
   freeGift?: string
 }
 
@@ -35,7 +29,7 @@ const PkgLink = memo(function PkgLink({ p, freeGift }: { p: PublicPackage; freeG
 })
 PkgLink.displayName = 'PkgLink'
 
-export function HomeContent({ pkgs, reviews, totalReviews, averageRating, freeGift }: Props) {
+export function HomeContent({ pkgs, freeGift }: Props) {
   const { t } = useLocale()
   const popular = useMemo(() => pkgs.filter((p) => p.popular || p.flashSale), [pkgs])
 
@@ -109,17 +103,6 @@ export function HomeContent({ pkgs, reviews, totalReviews, averageRating, freeGi
             </div>
           ))}
         </div>
-      </section>
-
-      {/* Reviews — lazy */}
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-        <TrustpilotReviews reviews={reviews} averageRating={averageRating} totalReviews={totalReviews} />
-        <TrustpilotFooter />
-      </section>
-
-      {/* Customer testimonials — lazy */}
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-        <CustomerTestimonials reviews={reviews} />
       </section>
 
       {/* FAQ — lazy */}

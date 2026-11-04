@@ -21,7 +21,7 @@ export const fr = {
   hero_track: 'Suivre ma commande',
   feat_instant: 'Livraison instantanée',
   feat_secure: '100% sécurisé',
-  feat_support: 'Support 24/7',
+  feat_support: 'Support selon les horaires indiqués',
   feat_customers: 'Service indépendant pour joueurs',
 
   // Package card
