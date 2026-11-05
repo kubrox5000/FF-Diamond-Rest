@@ -4,7 +4,7 @@ import { getSettings } from '@/lib/settings'
 import { resolveAtlosCredentials, type AtlosCredentials } from '@/lib/atlos-config'
 import { db } from '@/db'
 import { orders, type Order } from '@/db/schemas'
-import { eq } from 'drizzle-orm'
+import { and, eq, notInArray } from 'drizzle-orm'
 import type { PublicPaymentMethod } from '@/lib/types'
 
 // Atlos.io crypto payment gateway (https://atlos.io).
@@ -28,12 +28,7 @@ export async function verifyAtlosWebhook(
   timestampHeader?: string | null,
 ): Promise<boolean> {
   const { apiSecret } = await getAtlosCredentials()
-  if (!apiSecret) {
-    // If no secret configured, accept webhook
-    return true
-  }
-
-  if (!signatureHeader) return false
+  if (!apiSecret || !signatureHeader) return false
 
   try {
     const message = timestampHeader ? `${timestampHeader}.${rawBody}` : rawBody
@@ -72,10 +67,10 @@ export async function markAtlosOrderPaid(orderNumber: string, txId?: string): Pr
       txId: txId || order.txId,
       updatedAt: new Date(),
     })
-    .where(eq(orders.id, order.id))
+    .where(and(eq(orders.id, order.id), notInArray(orders.status, ['paid', 'completed'])))
     .returning()
 
-  return updated ?? order
+  return updated ?? null
 }
 
 // Add Atlos to the store's payment methods when configured

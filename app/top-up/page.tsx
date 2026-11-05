@@ -41,7 +41,7 @@ export default async function TopUpPage() {
     }
   }
 
-  const allowedMethods = new Set(['USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
+  const allowedMethods = new Set(['ATLOS', 'USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
   methods = methods.filter((method) => allowedMethods.has(method.key))
 
   return (

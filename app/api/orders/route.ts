@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       .where(eq(coupons.id, coupon.id))
   }
 
-  const allowedMethods = new Set(['USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
+  const allowedMethods = new Set(['ATLOS', 'USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
   const selectedPaymentMethod = pmRows[0]
   if (!allowedMethods.has(data.paymentMethod) || (selectedPaymentMethod && !selectedPaymentMethod.active)) {
     return NextResponse.json({ error: 'This payment method is not currently available' }, { status: 400 })
