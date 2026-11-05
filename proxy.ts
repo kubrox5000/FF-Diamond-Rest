@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Tag the visitor's country from edge/cloud geo headers into a cookie,
 // so server components can pick the correct locale and currency immediately.
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const country =
     request.headers.get('cf-ipcountry') ||
     request.headers.get('x-vercel-ip-country') ||

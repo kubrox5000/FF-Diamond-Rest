@@ -18,17 +18,16 @@ async function request<T>(
   const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`
 
   try {
+    const headers = new Headers(options.headers)
+    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+
     const response = await fetch(fullUrl, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
     })
 
-    const data = await response.json()
-
-    if (!response.ok) {
+    const data = await response.json() as ApiResponse<T> & { data?: T }
+    if (!response.ok || data.success === false) {
       return {
         success: false,
         error: data.error || response.statusText,
@@ -37,7 +36,7 @@ async function request<T>(
 
     return {
       success: true,
-      data,
+      data: data.success === true && 'data' in data ? data.data : data as unknown as T,
     }
   } catch (error) {
     console.error(`Fetch error for ${fullUrl}:`, error)
