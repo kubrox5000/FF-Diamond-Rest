@@ -8,6 +8,7 @@ import { getSettings } from '@/lib/settings'
 import { HELEKET_KEY, isHeleketConfigured, createHeleketInvoice } from '@/lib/heleket'
 import { ATLOS_KEY } from '@/lib/atlos'
 import { PLISIO_KEY, createPlisioInvoice, isPlisioConfigured } from '@/lib/plisio'
+import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 
 const createSchema = z.object({
   packageId: z.number().int().positive(),
@@ -22,6 +23,9 @@ const createSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const rateLimitResponse = await enforceRateLimit(req, 'orders:create', 10, 60)
+  if (rateLimitResponse) return rateLimitResponse
+
   const body = await req.json().catch(() => null)
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
@@ -63,7 +67,7 @@ export async function POST(req: NextRequest) {
       .where(eq(coupons.id, coupon.id))
   }
 
-  const allowedMethods = new Set(['USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
+  const allowedMethods = new Set(['ATLOS', 'USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
   const selectedPaymentMethod = pmRows[0]
   if (!allowedMethods.has(data.paymentMethod) || (selectedPaymentMethod && !selectedPaymentMethod.active)) {
     return NextResponse.json({ error: 'This payment method is not currently available' }, { status: 400 })

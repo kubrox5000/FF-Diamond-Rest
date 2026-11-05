@@ -10,12 +10,12 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const root = process.cwd()
-  const entries = await readdir(root)
+  const entries = await readdir(/* turbopackIgnore: true */ root)
 
   const files: { name: string; size: number }[] = []
   for (const name of entries) {
     try {
-      const s = await stat(path.join(root, name))
+      const s = await stat(path.join(/* turbopackIgnore: true */ root, name))
       if (s.isFile()) files.push({ name, size: s.size })
     } catch { /* skip */ }
   }

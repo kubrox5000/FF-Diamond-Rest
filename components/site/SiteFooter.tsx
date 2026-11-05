@@ -25,6 +25,11 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
     { href: '/track', label: t('foot_track') },
     { href: '/#faq', label: t('foot_faq') },
     { href: '/#contact', label: t('foot_contactlink') },
+    { href: '/about', label: 'About Us' },
+    { href: '/contact', label: 'Contact Us' },
+    { href: '/faq', label: 'FAQ' },
+    { href: '/payment-policy', label: 'Payment Policy' },
+    { href: '/disclaimer', label: 'Disclaimer' },
     { href: '/privacy', label: t('foot_privacy') },
     { href: '/terms', label: t('foot_terms') },
     { href: '/refund', label: t('foot_refund') },
@@ -32,7 +37,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
   ]
 
   return (
-    <footer id="contact" className="relative mt-24 border-t border-border/60 bg-background/70">
+    <footer id="contact" suppressHydrationWarning className="relative mt-24 border-t border-border/60 bg-background/70">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <div className="grid gap-10 md:grid-cols-3">
@@ -106,7 +111,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
           {/* Important links */}
           <div className="md:justify-self-end">
             <h4 className="text-sm font-semibold text-foreground">{t('foot_links')}</h4>
-            <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
+            <ul suppressHydrationWarning className="mt-4 space-y-2.5 text-sm text-muted-foreground">
               {quickLinks.map((l) => (
                 <li key={l.href}>
                   <Link href={l.href} className="group inline-flex items-center gap-1.5 hover:text-foreground">

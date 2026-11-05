@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { verifyPassword, signToken } from '@/lib/auth'
 import { ADMIN_COOKIE } from '@/lib/admin-session'
+import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 
 const schema = z.object({ username: z.string().min(1), password: z.string().min(1) })
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
+  const rateLimitResponse = await enforceRateLimit(req, 'admin:login', 5, 300)
+  if (rateLimitResponse) return rateLimitResponse
+
   const body = await req.json().catch(() => null)
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 })

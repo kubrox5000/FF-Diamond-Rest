@@ -22,7 +22,7 @@ export async function GET() {
       .where(eq(paymentMethods.active, true))
       .orderBy(asc(paymentMethods.sortOrder))
     return NextResponse.json({
-      methods: withPlisio(await withAtlos(withHeleket(rows as unknown as PublicPaymentMethod[]))).filter((m) => ['USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'].includes(m.key)).map((m) => ({
+      methods: withPlisio(await withAtlos(withHeleket(rows as unknown as PublicPaymentMethod[]))).filter((m) => ['ATLOS', 'USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'].includes(m.key)).map((m) => ({
         key: m.key,
         label: m.label,
         network: m.network,
@@ -32,7 +32,7 @@ export async function GET() {
     })
   } catch {
     return NextResponse.json({
-      methods: withPlisio(await withAtlos(withHeleket(SEED_PAYMENT_METHODS))).filter((m) => ['USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'].includes(m.key)).map((m) => ({
+      methods: withPlisio(await withAtlos(withHeleket(SEED_PAYMENT_METHODS))).filter((m) => ['ATLOS', 'USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'].includes(m.key)).map((m) => ({
         key: m.key,
         label: m.label,
         network: m.network,

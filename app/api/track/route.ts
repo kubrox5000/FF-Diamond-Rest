@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { orders } from '@/db/schemas'
 import { and, eq } from 'drizzle-orm'
+import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 
 // Track by order number OR player UID
 export async function GET(req: NextRequest) {
+  const rateLimitResponse = await enforceRateLimit(req, 'orders:track', 20, 60)
+  if (rateLimitResponse) return rateLimitResponse
+
   const orderNumber = req.nextUrl.searchParams.get('order')?.trim()
   const token = req.nextUrl.searchParams.get('token')?.trim()
   if (!orderNumber || !token || !/^[A-Za-z0-9]{32,80}$/.test(token)) {
