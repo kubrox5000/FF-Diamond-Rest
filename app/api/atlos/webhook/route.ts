@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAtlosWebhook, markAtlosOrderPaid } from '@/lib/atlos'
 import { notifyTelegramPayment } from '@/lib/telegram'
+import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
+  const rateLimitResponse = await enforceRateLimit(req, 'payments:atlos-webhook', 60, 60)
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const rawBody = await req.text()
     const signature = req.headers.get('x-webhook-signature') || req.headers.get('x-signature')
