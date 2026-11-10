@@ -81,3 +81,17 @@ export function discountedPrice(price: string | number, discountPct: number): nu
   const n = typeof price === 'string' ? parseFloat(price) : price
   return +(n * (1 - discountPct / 100)).toFixed(2)
 }
+
+export function validateDiscountPct(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value)) return null
+  if (value < 0 || value > 100) return null
+  return value
+}
+
+export function discountedCents(baseCents: number, discountPct: unknown): number | null {
+  if (!Number.isSafeInteger(baseCents) || baseCents <= 0) return null
+  const pct = validateDiscountPct(discountPct)
+  if (pct === null) return null
+  const amountCents = Math.round((baseCents * (100 - pct)) / 100)
+  return Number.isSafeInteger(amountCents) && amountCents > 0 ? amountCents : null
+}

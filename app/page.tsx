@@ -1,7 +1,3 @@
-import { db } from '@/db'
-import { packages } from '@/db/schemas'
-import { eq, asc } from 'drizzle-orm'
-import { unstable_cache } from 'next/cache'
 import { SiteNav } from '@/components/site/SiteNav'
 import { SiteFooter } from '@/components/site/SiteFooter'
 import FloatingSupport from '@/components/site/LazySupport'
@@ -9,8 +5,7 @@ import { AnnouncementBanner } from '@/components/site/AnnouncementBanner'
 import { HomeContent } from '@/components/geo/HomeContent'
 import { LocalizedTitle } from '@/components/geo/LocalizedTitle'
 import { getSettings } from '@/lib/settings'
-import { isDatabaseConfigured } from '@/lib/db-ssl'
-import { SEED_PACKAGES } from '@/lib/seed-data'
+import { OFFICIAL_PACKAGE_CATALOG } from '@/lib/package-catalog'
 import type { PublicPackage } from '@/lib/types'
 import { localizedPageMetadata } from '@/lib/seo'
 
@@ -23,20 +18,7 @@ export async function generateMetadata() {
 export default async function HomePage() {
   const settings = await getSettings()
 
-  let pkgRows: PublicPackage[] = SEED_PACKAGES
-  if (isDatabaseConfigured()) {
-    try {
-      const getCachedPackages = unstable_cache(
-        async () =>
-          db.select().from(packages).where(eq(packages.active, true)).orderBy(asc(packages.sortOrder)),
-        ['home-packages'],
-        { revalidate: 300, tags: ['home'] },
-      )
-      pkgRows = ((await getCachedPackages()) as unknown) as PublicPackage[]
-    } catch {
-      // fallback to seed data if DB is unreachable
-    }
-  }
+  const pkgRows: PublicPackage[] = OFFICIAL_PACKAGE_CATALOG
 
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://ff-diamond.rest'
 

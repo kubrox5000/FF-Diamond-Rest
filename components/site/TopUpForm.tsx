@@ -11,6 +11,7 @@ import { PackageCard } from '@/components/site/PackageCard'
 import { SERVERS, discountedPrice } from '@/lib/orders'
 import { orderedCountries, DIAL_CODES, DIAL_OPTIONS, countryByCode } from '@/lib/countries'
 import { formatNumber } from '@/lib/currencies'
+import { formatUsd } from '@/lib/orders'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
 import { CryptoIcon } from '@/components/site/CryptoIcon'
 import { cn } from '@/utils/cn'
@@ -23,7 +24,7 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
 }) {
   const router = useRouter()
   const params = useSearchParams()
-  const { t, formatPrice, countryCode, lang } = useLocale()
+  const { t, countryCode, lang } = useLocale()
   const preselect = params.get('package')
 
   const [selected, setSelected] = useState<PublicPackage | null>(
@@ -468,7 +469,7 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
                 <div className="flex items-center justify-between pt-2">
                   <span className="font-semibold">{t('total')}</span>
                   <div className="text-right">
-                    <p className="text-xl font-extrabold text-gold" translate="no">{formatPrice(price.usd)}</p>
+                    <p className="text-xl font-extrabold text-gold" translate="no">{formatUsd(price.usd)}</p>
                     <p className="text-xs text-muted-foreground" translate="no">{price.usdt.toFixed(2)} USDT</p>
                   </div>
                 </div>

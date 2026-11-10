@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { db } from '@/db'
 import { packages, orders, coupons, paymentMethods } from '@/db/schemas'
 import { eq, sql } from 'drizzle-orm'
-import { generateOrderNumber, discountedPrice } from '@/lib/orders'
+import { discountedCents, generateOrderNumber, validateDiscountPct } from '@/lib/orders'
+import { getOfficialPackage } from '@/lib/package-catalog'
 import { getSettings } from '@/lib/settings'
 import { HELEKET_KEY, isHeleketConfigured, createHeleketInvoice } from '@/lib/heleket'
 import { ATLOS_KEY } from '@/lib/atlos'
@@ -45,20 +46,23 @@ export async function POST(req: NextRequest) {
       : Promise.resolve([] as typeof coupons.$inferSelect[]),
   ])
 
-  const pkg = pkgRows[0]
-  if (!pkg || !pkg.active) {
+  const databasePackage = pkgRows[0]
+  const pkg = getOfficialPackage(data.packageId)
+  if (!pkg || (databasePackage && !databasePackage.active)) {
     return NextResponse.json({ error: 'Package not found' }, { status: 404 })
   }
 
-  // ── Apply coupon (if valid) ───────────────────────────────────────────────
-  let baseUsd  = discountedPrice(pkg.priceUsd,  pkg.discountPct)
-  let baseUsdt = discountedPrice(pkg.priceUsdt, pkg.discountPct)
+  // ── Apply coupon (if valid) using integer cents ───────────────────────────
+  let amountCents = pkg.priceCents
   let appliedCoupon: string | null = null
 
   const coupon = couponRows[0]
   if (couponCode && coupon && coupon.active && (!coupon.maxUses || coupon.usedCount < coupon.maxUses)) {
-    baseUsd   = +(baseUsd  * (1 - coupon.discountPct / 100)).toFixed(2)
-    baseUsdt  = +(baseUsdt * (1 - coupon.discountPct / 100)).toFixed(2)
+    const discountedAmountCents = discountedCents(amountCents, coupon.discountPct)
+    if (discountedAmountCents === null) {
+      return NextResponse.json({ error: 'Invalid coupon discount' }, { status: 400 })
+    }
+    amountCents = discountedAmountCents
     appliedCoupon = couponCode
     // Fire coupon usage increment without blocking the response
     void db
@@ -67,6 +71,12 @@ export async function POST(req: NextRequest) {
       .where(eq(coupons.id, coupon.id))
   }
 
+  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+    return NextResponse.json({ error: 'Invalid order total' }, { status: 400 })
+  }
+
+  const amountUsd = amountCents / 100
+  const amountUsdt = amountUsd
   const allowedMethods = new Set(['ATLOS', 'USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
   const selectedPaymentMethod = pmRows[0]
   if (!allowedMethods.has(data.paymentMethod) || (selectedPaymentMethod && !selectedPaymentMethod.active)) {
@@ -105,7 +115,7 @@ export async function POST(req: NextRequest) {
     try {
       const invoice = await createHeleketInvoice({
         orderNumber,
-        amountUsdt: baseUsdt.toFixed(2),
+        amountUsdt: amountUsdt.toFixed(2),
         origin: req.nextUrl.origin,
       })
       walletAddress = invoice.url
@@ -127,7 +137,7 @@ export async function POST(req: NextRequest) {
   if (data.paymentMethod === PLISIO_KEY) {
     if (!isPlisioConfigured()) return NextResponse.json({ error: 'Plisio payments are not configured' }, { status: 503 })
     try {
-      const invoice = await createPlisioInvoice({ orderNumber, amountUsd: baseUsd.toFixed(2), callbackUrl: `${req.nextUrl.origin}/api/plisio/webhook`, email: data.email })
+      const invoice = await createPlisioInvoice({ orderNumber, amountUsd: amountUsd.toFixed(2), callbackUrl: `${req.nextUrl.origin}/api/plisio/webhook`, email: data.email })
       plisioUrl = invoice.url
       plisioTxnId = invoice.txnId
       walletAddress = invoice.url
@@ -155,8 +165,8 @@ export async function POST(req: NextRequest) {
         email:         data.email || null,
         country:       data.country || null,
         phone:         data.phone || null,
-        amountUsd:     baseUsd.toFixed(2),
-        amountUsdt:    baseUsdt.toFixed(2),
+        amountUsd: amountUsd.toFixed(2),
+        amountUsdt:    amountUsdt.toFixed(2),
         paymentMethod: data.paymentMethod,
         walletAddress,
         txId:          heleketUuid || plisioTxnId,

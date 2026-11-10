@@ -2,21 +2,11 @@
  * بيانات تجريبية كاملة مأخوذة من seed.ts الأصلي.
  * تُستخدم عندما لا تتوفر قاعدة بيانات (DATABASE_URL غير محدد).
  */
-import type { PublicPackage, PublicReview, PublicPaymentMethod } from '@/lib/types'
+import type { PublicReview, PublicPaymentMethod } from '@/lib/types'
+import { OFFICIAL_PACKAGE_CATALOG } from '@/lib/package-catalog'
 
-export const SEED_PACKAGES: PublicPackage[] = [
-  { id: 1,  diamonds: 310,   bonusDiamonds: 0, priceUsd: '1.49',  priceUsdt: '1.49',  discountPct: 0, popular: false, flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 1 },
-  { id: 2,  diamonds: 520,   bonusDiamonds: 0, priceUsd: '2.49',  priceUsdt: '2.49',  discountPct: 0, popular: false, flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 2 },
-  { id: 3,  diamonds: 1060,  bonusDiamonds: 0, priceUsd: '3.49',  priceUsdt: '3.49',  discountPct: 0, popular: true,  flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 3 },
-  { id: 4,  diamonds: 2180,  bonusDiamonds: 0, priceUsd: '5.49',  priceUsdt: '5.49',  discountPct: 0, popular: true,  flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 4 },
-  { id: 5,  diamonds: 5600,  bonusDiamonds: 0, priceUsd: '7.49',  priceUsdt: '7.49',  discountPct: 0, popular: true,  flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 5 },
-  { id: 6,  diamonds: 6600,  bonusDiamonds: 0, priceUsd: '8.49',  priceUsdt: '8.49',  discountPct: 0, popular: false, flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 6 },
-  { id: 7,  diamonds: 7700,  bonusDiamonds: 0, priceUsd: '9.49',  priceUsdt: '9.49',  discountPct: 0, popular: false, flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 7 },
-  { id: 8,  diamonds: 8800,  bonusDiamonds: 0, priceUsd: '10.49', priceUsdt: '10.49', discountPct: 0, popular: false, flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 8 },
-  { id: 9,  diamonds: 9900,  bonusDiamonds: 0, priceUsd: '11.49', priceUsdt: '11.49', discountPct: 0, popular: false, flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 9 },
-  { id: 10, diamonds: 10500, bonusDiamonds: 0, priceUsd: '12.49', priceUsdt: '12.49', discountPct: 0, popular: true,  flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 10 },
-  { id: 11, diamonds: 11500, bonusDiamonds: 0, priceUsd: '13.49', priceUsdt: '13.49', discountPct: 0, popular: false, flashSale: false, deliveryEta: '1-5 minutes', active: true, sortOrder: 11 },
-]
+export const SEED_PACKAGES = OFFICIAL_PACKAGE_CATALOG
+
 
 
 export const SEED_REVIEWS: PublicReview[] = [

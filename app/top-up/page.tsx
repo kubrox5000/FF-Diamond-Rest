@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { db } from '@/db'
-import { packages, paymentMethods } from '@/db/schemas'
+import { paymentMethods } from '@/db/schemas'
 import { eq, asc } from 'drizzle-orm'
 import { SiteNav } from '@/components/site/SiteNav'
 import { SiteFooter } from '@/components/site/SiteFooter'
@@ -9,7 +9,8 @@ import { TopUpForm } from '@/components/site/TopUpForm'
 import { PageHeader } from '@/components/geo/PageHeader'
 import { LocalizedTitle } from '@/components/geo/LocalizedTitle'
 import { getSettings } from '@/lib/settings'
-import { SEED_PACKAGES, SEED_PAYMENT_METHODS } from '@/lib/seed-data'
+import { SEED_PAYMENT_METHODS } from '@/lib/seed-data'
+import { OFFICIAL_PACKAGE_CATALOG } from '@/lib/package-catalog'
 import type { PublicPackage, PublicPaymentMethod } from '@/lib/types'
 import { localizedPageMetadata } from '@/lib/seo'
 import { withHeleket } from '@/lib/heleket'
@@ -24,20 +25,20 @@ export async function generateMetadata() {
 }
 
 export default async function TopUpPage() {
-  let pkgRows: PublicPackage[] = SEED_PACKAGES
+  const pkgRows: PublicPackage[] = OFFICIAL_PACKAGE_CATALOG
   let methods: PublicPaymentMethod[] = SEED_PAYMENT_METHODS
   const settings = await getSettings()
 
   if (isDatabaseConfigured()) {
     try {
-      const [dbPkgs, dbMethods] = await Promise.all([
-        db.select().from(packages).where(eq(packages.active, true)).orderBy(asc(packages.sortOrder)),
-        db.select().from(paymentMethods).where(eq(paymentMethods.active, true)).orderBy(asc(paymentMethods.sortOrder)),
-      ])
-      pkgRows = dbPkgs as unknown as PublicPackage[]
+      const dbMethods = await db
+        .select()
+        .from(paymentMethods)
+        .where(eq(paymentMethods.active, true))
+        .orderBy(asc(paymentMethods.sortOrder))
       methods = dbMethods as unknown as PublicPaymentMethod[]
     } catch {
-      // fallback to seed data
+      // fallback to seed payment methods
     }
   }
 
