@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { db } from '@/db'
 import { packages, orders, coupons, paymentMethods } from '@/db/schemas'
 import { eq, sql } from 'drizzle-orm'
-import { generateOrderNumber } from '@/lib/orders'
+import { discountedCents, generateOrderNumber, validateDiscountPct } from '@/lib/orders'
 import { getOfficialPackage } from '@/lib/package-catalog'
 import { getSettings } from '@/lib/settings'
 import { HELEKET_KEY, isHeleketConfigured, createHeleketInvoice } from '@/lib/heleket'
@@ -58,13 +58,21 @@ export async function POST(req: NextRequest) {
 
   const coupon = couponRows[0]
   if (couponCode && coupon && coupon.active && (!coupon.maxUses || coupon.usedCount < coupon.maxUses)) {
-    amountCents = Math.round((amountCents * (100 - coupon.discountPct)) / 100)
+    const discountedAmountCents = discountedCents(amountCents, coupon.discountPct)
+    if (discountedAmountCents === null) {
+      return NextResponse.json({ error: 'Invalid coupon discount' }, { status: 400 })
+    }
+    amountCents = discountedAmountCents
     appliedCoupon = couponCode
     // Fire coupon usage increment without blocking the response
     void db
       .update(coupons)
       .set({ usedCount: sql`${coupons.usedCount} + 1` })
       .where(eq(coupons.id, coupon.id))
+  }
+
+  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+    return NextResponse.json({ error: 'Invalid order total' }, { status: 400 })
   }
 
   const amountUsd = amountCents / 100
