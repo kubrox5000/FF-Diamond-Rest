@@ -5,6 +5,7 @@ import { Gem, Flame, Check, Trophy, Gift } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { discountedPrice } from '@/lib/orders'
 import { formatNumber } from '@/lib/currencies'
+import { formatUsd } from '@/lib/orders'
 import type { PublicPackage } from '@/lib/types'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
 
@@ -26,7 +27,7 @@ interface Props {
 }
 
 function PackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
-  const { t, formatPrice } = useLocale()
+  const { t } = useLocale()
   const finalUsd = discountedPrice(pkg.priceUsd, pkg.discountPct)
   const hasDiscount = pkg.discountPct > 0
   const xMultiplier = X4_DIAMONDS.includes(pkg.diamonds) ? 4 : X3_DIAMONDS.includes(pkg.diamonds) ? 3 : X2_DIAMONDS.includes(pkg.diamonds) ? 2 : 0
@@ -82,11 +83,11 @@ function PackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
 
       <div className="mb-1 flex items-baseline gap-2" translate="no">
         <span className="text-2xl font-extrabold text-gold">
-          {formatPrice(finalUsd)}
+          {formatUsd(finalUsd)}
         </span>
         {hasDiscount && (
           <span className="text-sm text-muted-foreground line-through">
-            {formatPrice(Number(pkg.priceUsd))}
+            {formatUsd(Number(pkg.priceUsd))}
           </span>
         )}
       </div>

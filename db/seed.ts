@@ -18,30 +18,17 @@ async function seed() {
 
   await sql`DELETE FROM packages`
   await sql`INSERT INTO packages (diamonds, bonus_diamonds, price_usd, price_usdt, discount_pct, popular, flash_sale, delivery_eta, sort_order) VALUES
-    (3100,   250,  19,  19, 0, false, false, '1-5 minutes', 1),
-    (6500,   500,  38,  38, 0, false, false, '1-5 minutes', 2),
-    (9600,   750,  53,  53, 0, false, false, '1-5 minutes', 3),
-    (10500,  850,  68,  68, 0, false, false, '1-5 minutes', 4),
-    (14000, 1100,  83,  83, 0, false, false, '1-5 minutes', 5),
-    (17500, 1400,  98,  98, 0, false, false, '1-5 minutes', 6),
-    (21000, 0, 113, 113, 0, true, false, '1-10 minutes', 7),
-    (24500, 0, 128, 128, 0, false, false, '1-10 minutes', 8),
-    (28000, 0, 143, 143, 0, false, false, '1-10 minutes', 9),
-    (32000, 0, 159, 159, 0, true, false, '1-10 minutes', 10),
-    (36000, 0, 179, 179, 0, false, false, '1-10 minutes', 11),
-    (40000, 0, 199, 199, 0, true, false, '1-10 minutes', 12),
-    (45000, 0, 219, 219, 0, false, false, '2-15 minutes', 13),
-    (50000, 0, 239, 239, 0, false, false, '2-15 minutes', 14),
-    (60000, 0, 279, 279, 0, true, false, '2-15 minutes', 15),
-    (70000, 0, 319, 319, 0, false, false, '2-15 minutes', 16),
-    (80000, 0, 359, 359, 0, false, false, '2-15 minutes', 17),
-    (90000, 0, 399, 399, 0, false, false, '2-15 minutes', 18),
-    (100000, 0, 439, 439, 0, false, false, '2-15 minutes', 19),
-    (120000, 0, 519, 519, 0, false, false, '2-15 minutes', 20),
-    (150000, 0, 639, 639, 0, false, false, '2-30 minutes', 21),
-    (180000, 0, 759, 759, 0, false, false, '2-30 minutes', 22),
-    (210000, 0, 879, 879, 0, false, false, '2-30 minutes', 23),
-    (240000, 0, 999, 999, 0, false, false, '2-30 minutes', 24)`
+    (310, 50, 1.00, 1.00, 0, false, false, '1-5 minutes', 1),
+    (520, 100, 2.00, 2.00, 0, false, false, '1-5 minutes', 2),
+    (1060, 150, 3.00, 3.00, 0, true, false, '1-5 minutes', 3),
+    (2180, 200, 5.00, 5.00, 0, true, false, '1-5 minutes', 4),
+    (5600, 250, 7.00, 7.00, 0, true, false, '1-5 minutes', 5),
+    (6600, 300, 8.00, 8.00, 0, false, false, '1-5 minutes', 6),
+    (7700, 350, 9.00, 9.00, 0, false, false, '1-5 minutes', 7),
+    (8800, 400, 10.00, 10.00, 0, false, false, '1-5 minutes', 8),
+    (9900, 450, 11.00, 11.00, 0, false, false, '1-5 minutes', 9),
+    (10500, 500, 12.00, 12.00, 0, true, false, '1-5 minutes', 10),
+    (11500, 550, 13.00, 13.00, 0, false, false, '1-5 minutes', 11)`
 
   await sql`DELETE FROM reviews`
   await sql`INSERT INTO reviews (name, rating, title, comment, country, country_code, package_label, verified, created_at) VALUES

@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Search, Loader2, Gem, PackageSearch } from 'lucide-react'
 import { STATUS_META, type OrderStatus } from '@/lib/orders'
 import { formatNumber } from '@/lib/currencies'
+import { formatUsd } from '@/lib/orders'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
 import { cn } from '@/utils/cn'
 import type { PublicOrder } from '@/lib/types'
@@ -100,7 +101,7 @@ export function TrackClient() {
 }
 
 function OrderCard({ order }: { order: PublicOrder }) {
-  const { t, formatPrice } = useLocale()
+  const { t } = useLocale()
   const status = order.status as OrderStatus
   const meta = STATUS_META[status]
   const cancelled = status === 'cancelled'
@@ -128,7 +129,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
       <div className="mt-4 flex items-center gap-3 rounded-xl bg-secondary/40 p-3" translate="no">
         <Gem className="h-5 w-5 text-sky-300" />
         <span className="font-bold">{formatNumber(order.diamonds)} 💎</span>
-        <span className="ml-auto font-bold text-gold">{formatPrice(parseFloat(order.amountUsd))}</span>
+        <span className="ml-auto font-bold text-gold">{formatUsd(parseFloat(order.amountUsd))}</span>
       </div>
 
       {!cancelled ? (
