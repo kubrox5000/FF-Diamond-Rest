@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
   if (data.paymentMethod === PLISIO_KEY) {
     if (!isPlisioConfigured()) return NextResponse.json({ error: 'Plisio payments are not configured' }, { status: 503 })
     try {
-      const invoice = await createPlisioInvoice({ orderNumber, amountUsd: amountUsd.toFixed(2), callbackUrl: `${req.nextUrl.origin}/api/plisio/webhook`, email: data.email })
+      const invoice = await createPlisioInvoice({ orderNumber, amountUsd: amountUsd.toFixed(2), callbackUrl: `${req.nextUrl.origin}/api/plisio/webhook?json=true`, email: data.email })
       plisioUrl = invoice.url
       plisioTxnId = invoice.txnId
       walletAddress = invoice.url
