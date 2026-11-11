@@ -4,12 +4,16 @@ import { orders } from '@/db/schemas'
 import { eq } from 'drizzle-orm'
 import { HELEKET_KEY, verifyWebhookSign, syncHeleketOrder } from '@/lib/heleket'
 import { notifyTelegramPayment } from '@/lib/telegram'
+import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 
 export const dynamic = 'force-dynamic'
 
 // Heleket payment webhook. The signature is checked, then the invoice status is
 // re-read from the Heleket API so the order is only updated from trusted data.
 export async function POST(req: NextRequest) {
+  const rateLimitResponse = await enforceRateLimit(req, 'webhooks:heleket', 600, 60)
+  if (rateLimitResponse) return rateLimitResponse
+
   const payload = (await req.json().catch(() => null)) as Record<string, unknown> | null
   if (!payload || typeof payload.order_id !== 'string') {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })

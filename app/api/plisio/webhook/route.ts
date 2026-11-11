@@ -3,10 +3,14 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { orders } from '@/db/schemas'
 import { notifyTelegramPayment } from '@/lib/telegram'
+import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 
 const paidStatuses = new Set(['completed', 'mismatch'])
 
 export async function POST(req: NextRequest) {
+  const rateLimitResponse = await enforceRateLimit(req, 'webhooks:plisio', 600, 60)
+  if (rateLimitResponse) return rateLimitResponse
+
   const payload = await req.json().catch(() => null) as Record<string, unknown> | null
   const orderNumber = typeof payload?.order_number === 'string' ? payload.order_number : ''
   const status = typeof payload?.status === 'string' ? payload.status : ''

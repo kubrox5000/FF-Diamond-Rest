@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '@/db'
 import { orders } from '@/db/schemas'
 import { eq } from 'drizzle-orm'
+import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 
 const schema = z.object({
   txId: z.string().min(4).max(120),
@@ -16,6 +17,9 @@ const schema = z.object({
 
 // Customer submits payment proof: tx id + optional proof (data URL / link) -> review
 export async function POST(req: NextRequest, { params }: { params: Promise<{ orderNumber: string }> }) {
+  const rateLimitResponse = await enforceRateLimit(req, 'orders:proof', 6, 300)
+  if (rateLimitResponse) return rateLimitResponse
+
   const { orderNumber } = await params
   const body = await req.json().catch(() => null)
   const parsed = schema.safeParse(body)

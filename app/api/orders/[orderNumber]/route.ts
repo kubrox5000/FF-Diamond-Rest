@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { orders } from '@/db/schemas'
 import { eq } from 'drizzle-orm'
+import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ orderNumber: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ orderNumber: string }> }) {
+  const rateLimitResponse = await enforceRateLimit(req, 'orders:lookup', 30, 60)
+  if (rateLimitResponse) return rateLimitResponse
+
   const { orderNumber } = await params
   const order = (
     await db.select().from(orders).where(eq(orders.orderNumber, orderNumber)).limit(1)
