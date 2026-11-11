@@ -3,8 +3,12 @@ import { db } from '@/db'
 import { coupons } from '@/db/schemas'
 import { eq } from 'drizzle-orm'
 import { validateDiscountPct } from '@/lib/orders'
+import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 
 export async function POST(req: NextRequest) {
+  const rateLimitResponse = await enforceRateLimit(req, 'coupons:validate', 20, 60)
+  if (rateLimitResponse) return rateLimitResponse
+
   const body = await req.json().catch(() => null)
   const code = (body?.code ?? '').toString().trim().toUpperCase()
   if (!code) return NextResponse.json({ valid: false, error: 'Enter a code' }, { status: 400 })

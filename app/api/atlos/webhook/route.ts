@@ -6,7 +6,7 @@ import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
-  const rateLimitResponse = await enforceRateLimit(req, 'payments:atlos-webhook', 60, 60)
+  const rateLimitResponse = await enforceRateLimit(req, 'webhooks:atlos', 600, 60)
   if (rateLimitResponse) return rateLimitResponse
 
   try {
