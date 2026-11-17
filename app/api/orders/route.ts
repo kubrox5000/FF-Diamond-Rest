@@ -11,6 +11,7 @@ import { ATLOS_KEY, isAtlosConfigured } from '@/lib/atlos'
 import { PLISIO_KEY, createPlisioInvoice, isPlisioConfigured } from '@/lib/plisio'
 import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
 import { createMockOrder } from '@/lib/mock-orders'
 import {
   findMockCoupon,
@@ -61,12 +62,29 @@ export async function POST(req: NextRequest) {
 
   const databasePackage = pkgRows[0]
   const mockPkg = !dbReady ? getMockPackage(data.packageId) : undefined
-  const officialPkg = getOfficialPackage(data.packageId)
+  const officialPkg = !dbReady ? getOfficialPackage(data.packageId) : undefined
+
+  let resolvedDatabasePkg:
+    | (typeof databasePackage & { priceCents: number })
+    | undefined
+  if (databasePackage && databasePackage.active) {
+    const rawCents = Math.round(parseFloat(String(databasePackage.priceUsd)) * 100)
+    const effectiveCents =
+      databasePackage.discountPct > 0
+        ? discountedCents(rawCents, databasePackage.discountPct)
+        : rawCents
+    if (effectiveCents !== null && Number.isSafeInteger(effectiveCents) && effectiveCents > 0) {
+      resolvedDatabasePkg = { ...databasePackage, priceCents: effectiveCents }
+    }
+  }
+
   const resolvedMockPkg = mockPkg
     ? { ...mockPkg, priceCents: Math.round(parseFloat(mockPkg.priceUsd) * 100) }
     : undefined
-  const pkg = officialPkg ?? resolvedMockPkg
-  if (!pkg || (databasePackage && !databasePackage.active) || (mockPkg && !mockPkg.active)) {
+  const pkg = dbReady
+    ? resolvedDatabasePkg
+    : (officialPkg ?? resolvedMockPkg)
+  if (!pkg || !pkg.active) {
     return NextResponse.json({ error: 'Package not found' }, { status: 404 })
   }
 
@@ -89,6 +107,8 @@ export async function POST(req: NextRequest) {
         .update(coupons)
         .set({ usedCount: sql`${coupons.usedCount} + 1` })
         .where(eq(coupons.id, coupon.id))
+        .execute()
+        .catch(() => {})
     } else {
       incrementMockCouponUsage(coupon.id)
     }
@@ -205,6 +225,7 @@ export async function POST(req: NextRequest) {
 
   let inserted
   if (dbReady) {
+    await ensureOrdersSchema()
     inserted = (
       await db
         .insert(orders)

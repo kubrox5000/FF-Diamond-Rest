@@ -7,7 +7,7 @@ import {
   Loader2, Gem, Hash, MapPin, Phone, Ticket, CheckCircle2,
   Copy, ArrowRight, ChevronDown, CreditCard,
 } from 'lucide-react'
-import { PackageCard } from '@/components/site/PackageCard'
+import { PackageCard } from '@/components/site/DiamondPackageCard'
 import { SERVERS, discountedPrice } from '@/lib/orders'
 import { orderedCountries, DIAL_CODES, DIAL_OPTIONS, countryByCode } from '@/lib/countries'
 import { formatNumber } from '@/lib/currencies'
@@ -27,8 +27,17 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
   const { t, countryCode, lang, currency, formatPrice } = useLocale()
   const preselect = params.get('package')
 
+  const normalizedPackages = useMemo(
+    () =>
+      packages.map((p) => ({
+        ...p,
+        bonusDiamonds: p.bonusDiamonds > 0 ? p.bonusDiamonds : Math.max(50, Number(p.sortOrder || 1) * 50),
+      })),
+    [packages],
+  )
+
   const [selected, setSelected] = useState<PublicPackage | null>(
-    preselect ? packages.find((p) => p.id === Number(preselect)) ?? null : null,
+    preselect ? normalizedPackages.find((p) => p.id === Number(preselect)) ?? null : null,
   )
   const [uid, setUid] = useState('')
   const [email, setEmail] = useState('')
@@ -198,17 +207,14 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
         {/* Package selection */}
         <SectionHeading>{t('top_step1')}</SectionHeading>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
-          {packages.length === 0 ? (
+          {normalizedPackages.length === 0 ? (
             <div className="col-span-full rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
               {lang === 'ar' ? 'لا توجد باقات متوفرة حالياً' : 'No packages available at the moment'}
             </div>
           ) : (
-              packages.map((p) => {
-                const giftDiamonds = p.bonusDiamonds > 0 ? p.bonusDiamonds : p.sortOrder * 50
-                return (
-                  <PackageCard key={p.id} pkg={{ ...p, bonusDiamonds: giftDiamonds }} selected={selected?.id === p.id} onSelect={setSelected} ctaLabel={t('pkg_select')} freeGift={freeGift} />
-                )
-              })
+            normalizedPackages.map((p) => (
+              <PackageCard key={p.id} pkg={p} selected={selected?.id === p.id} onSelect={setSelected} ctaLabel={t('pkg_select')} freeGift={freeGift} />
+            ))
           )}
         </div>
 

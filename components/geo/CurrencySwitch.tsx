@@ -16,7 +16,7 @@ interface CurrencyOption {
 const CURRENCY_FLAGS: Record<string, string> = {
   USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', SAR: '🇸🇦', AED: '🇦🇪', EGP: '🇪🇬', MAD: '🇲🇦',
   DZD: '🇩🇿', TND: '🇹🇳', IQD: '🇮🇶', KWD: '🇰🇼', QAR: '🇶🇦', BHD: '🇧🇭', OMR: '🇴🇲',
-  JOD: '🇯🇴', LYD: '🇱🇾', CAD: '🇨🇦', AUD: '🇦🇺', NZD: '🇳🇿', CHF: '🇨🇭', INR: '🇮🇳',
+  JOD: '🇯🇴', LYD: '🇱🇾', LBP: '🇱🇧', CAD: '🇨🇦', AUD: '🇦🇺', NZD: '🇳🇿', CHF: '🇨🇭', INR: '🇮🇳',
   PKR: '🇵🇰', BDT: '🇧🇩', IDR: '🇮🇩', PHP: '🇵🇭', BRL: '🇧🇷', MXN: '🇲🇽', COP: '🇨🇴',
   ARS: '🇦🇷', CLP: '🇨🇱', PEN: '🇵🇪', PYG: '🇵🇾', TRY: '🇹🇷', NGN: '🇳🇬', ZAR: '🇿🇦', KES: '🇰🇪',
   GHS: '🇬🇭', THB: '🇹🇭', MYR: '🇲🇾', SGD: '🇸🇬', JPY: '🇯🇵', KRW: '🇰🇷', VND: '🇻🇳',

@@ -13,6 +13,7 @@ import type { PublicOrder } from '@/lib/types'
 import { localizedPageMetadata } from '@/lib/seo'
 import { syncHeleketOrder } from '@/lib/heleket'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
 import { getMockOrder } from '@/lib/mock-orders'
 
 export const dynamic = 'force-dynamic'
@@ -24,16 +25,20 @@ export async function generateMetadata() {
 export default async function PaymentPage({ params }: { params: Promise<{ orderNumber: string }> }) {
   const { orderNumber } = await params
   const settings = await getSettings()
-  let row = isDatabaseConfigured()
+  const dbReady = isDatabaseConfigured()
+  if (dbReady) await ensureOrdersSchema()
+  let row = dbReady
     ? (await db.select().from(orders).where(eq(orders.orderNumber, orderNumber)).limit(1))[0]
     : getMockOrder(orderNumber) ?? undefined
   if (!row) notFound()
   // Heleket orders: refresh the status from the gateway in case the webhook is late.
-  if (isDatabaseConfigured()) {
+  if (dbReady && row) {
     row = await syncHeleketOrder(row).catch(() => row)
   }
+  if (!row) notFound()
 
   const order = JSON.parse(JSON.stringify(row)) as PublicOrder
+  delete order.trackingToken
 
   return (
     <>

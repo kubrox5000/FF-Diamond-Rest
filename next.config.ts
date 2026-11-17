@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
   },
   // HTTP cache headers for static assets
   async headers() {
+    const isProd = process.env.NODE_ENV === 'production';
     return [
       {
         source: '/(.*)',
@@ -35,7 +36,10 @@ const nextConfig: NextConfig = {
       {
         source: '/_next/static/(.*)',
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          {
+            key: 'Cache-Control',
+            value: isProd ? 'public, max-age=31536000, immutable' : 'no-store, must-revalidate',
+          },
         ],
       },
       {
@@ -44,7 +48,7 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
         ],
       },
-    ]
+    ];
   },
   env: {
     PROJECT_ID: process.env.HAPPYSEEDS_PROJECT_ID ?? '',

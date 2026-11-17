@@ -74,10 +74,10 @@ const DEFAULTS: SiteSettings = {
   telegram: '',
   discord: '',
   maintenance: false,
-  announcementAr: 'خصم يصل إلى 30% على باقات الماس المميزة',
-  announcementEn: 'Up to 30% OFF on premium diamond packages',
-  announcementFr: "Jusqu'à 30% de réduction sur les packs de diamants premium",
-  announcementEs: 'Hasta 30% de descuento en paquetes de diamantes premium',
+  announcementAr: 'خدمة مستقلة لشحن ماس فري فاير عبر معرّف اللاعب (UID) فقط',
+  announcementEn: 'Independent Free Fire diamond top-up via Player UID only',
+  announcementFr: 'Service indépendant de recharge Free Fire par ID joueur (UID) uniquement',
+  announcementEs: 'Servicio independiente de recarga Free Fire solo con ID de jugador (UID)',
   supportEmail: 'support@ff-diamond.rest',
   phone: '+1 339 746 3729',
   address: '3215 Tenmile, Norfolk, VA 23513, United States',
@@ -125,9 +125,27 @@ const globalForMockSettings = globalThis as unknown as {
   __ffMockSettings?: Partial<SiteSettings>
 }
 
+const LEGACY_MISLEADING_ANNOUNCEMENTS = new Set([
+  'خصم يصل إلى 30% على باقات الماس المميزة',
+  'Up to 30% OFF on premium diamond packages',
+  "Jusqu'à 30% de réduction sur les packs de diamants premium",
+  'Hasta 30% de descuento en paquetes de diamantes premium',
+  'Flash Sale is LIVE! Up to 15% OFF on premium diamond packages.',
+])
+
+function sanitizeAnnouncements(settings: SiteSettings): SiteSettings {
+  return {
+    ...settings,
+    announcementAr: LEGACY_MISLEADING_ANNOUNCEMENTS.has(settings.announcementAr.trim()) ? DEFAULTS.announcementAr : settings.announcementAr,
+    announcementEn: LEGACY_MISLEADING_ANNOUNCEMENTS.has(settings.announcementEn.trim()) ? DEFAULTS.announcementEn : settings.announcementEn,
+    announcementFr: LEGACY_MISLEADING_ANNOUNCEMENTS.has(settings.announcementFr.trim()) ? DEFAULTS.announcementFr : settings.announcementFr,
+    announcementEs: LEGACY_MISLEADING_ANNOUNCEMENTS.has(settings.announcementEs.trim()) ? DEFAULTS.announcementEs : settings.announcementEs,
+  }
+}
+
 async function readSettingsRaw(): Promise<SiteSettings> {
   if (!isDatabaseConfigured()) {
-    return { ...DEFAULTS, ...(globalForMockSettings.__ffMockSettings ?? {}) }
+    return sanitizeAnnouncements({ ...DEFAULTS, ...(globalForMockSettings.__ffMockSettings ?? {}) })
   }
   let rawSql: ReturnType<typeof postgres> | null = null
   try {
@@ -135,7 +153,7 @@ async function readSettingsRaw(): Promise<SiteSettings> {
     const rows = await rawSql`SELECT data::text as raw FROM settings WHERE id = 1`
     await rawSql.end()
     if (rows.length === 0) return DEFAULTS
-    return { ...DEFAULTS, ...parseSettingsRaw(rows[0].raw) }
+    return sanitizeAnnouncements({ ...DEFAULTS, ...parseSettingsRaw(rows[0].raw) })
   } catch (err) {
     console.warn('[settings] readSettingsRaw error:', err)
     if (rawSql) {
@@ -147,7 +165,7 @@ async function readSettingsRaw(): Promise<SiteSettings> {
 
 // Cached 60s so the root layout doesn't hit the DB on every page load.
 // Admin saves invalidate the 'settings' tag.
-const getSettingsCached = unstable_cache(readSettingsRaw, ['site-settings'], {
+const getSettingsCached = unstable_cache(readSettingsRaw, ['site-settings-v2'], {
   revalidate: 60,
   tags: ['settings'],
 })

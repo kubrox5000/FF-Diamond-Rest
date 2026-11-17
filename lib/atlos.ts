@@ -5,6 +5,7 @@ import { resolveAtlosCredentials, type AtlosCredentials } from '@/lib/atlos-conf
 import { db } from '@/db'
 import { orders, type Order } from '@/db/schemas'
 import { and, eq, notInArray } from 'drizzle-orm'
+import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
 import type { PublicPaymentMethod } from '@/lib/types'
 
 // Atlos.io crypto payment gateway (https://atlos.io).
@@ -48,6 +49,7 @@ export async function verifyAtlosWebhook(
 
 // Synchronize and mark Atlos order as paid
 export async function markAtlosOrderPaid(orderNumber: string, txId?: string): Promise<Order | null> {
+  await ensureOrdersSchema()
   const [order] = await db
     .select()
     .from(orders)

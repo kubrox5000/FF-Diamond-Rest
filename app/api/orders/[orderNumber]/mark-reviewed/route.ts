@@ -4,6 +4,7 @@ import { orders } from '@/db/schemas'
 import { eq } from 'drizzle-orm'
 import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
 import { getMockOrder, updateMockOrder } from '@/lib/mock-orders'
 
 // Customer finished the card OTP verification → move order into review.
@@ -13,6 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
 
   const { orderNumber } = await params
 
+  if (isDatabaseConfigured()) await ensureOrdersSchema()
   const order = isDatabaseConfigured()
     ? (await db.select().from(orders).where(eq(orders.orderNumber, orderNumber)).limit(1))[0]
     : getMockOrder(orderNumber)

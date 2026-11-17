@@ -28,14 +28,13 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
     { href: '/', label: t('foot_home') },
     { href: '/#how-it-works', label: t('foot_how') },
     { href: '/track', label: t('foot_track') },
-    { href: '/#faq', label: t('foot_faq') },
-    { href: '/#contact', label: t('foot_contactlink') },
-    { href: '/about', label: 'About Us' },
-    { href: '/contact', label: 'Contact Us' },
-    { href: '/faq', label: 'FAQ' },
-    { href: '/payment-policy', label: 'Payment Policy' },
-    { href: '/disclaimer', label: 'Disclaimer' },
+    { href: '/about', label: t('foot_about') },
+    { href: '/contact', label: t('foot_contactlink') },
+    { href: '/faq', label: t('foot_faq') },
+    { href: '/payment-policy', label: t('foot_payment_policy') },
+    { href: '/disclaimer', label: t('foot_disclaimer') },
     { href: '/privacy', label: t('foot_privacy') },
+    { href: '/cookies', label: t('foot_cookies') },
     { href: '/terms', label: t('foot_terms') },
     { href: '/refund', label: t('foot_refund') },
     { href: '/delivery', label: t('foot_delivery') },
@@ -116,7 +115,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
           {/* Important links */}
           <div className="md:justify-self-end">
             <h4 className="text-sm font-semibold text-foreground">{t('foot_links')}</h4>
-            <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
+            <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm text-muted-foreground sm:grid-cols-1">
               {quickLinks.map((l) => (
                 <li key={l.href}>
                   <Link href={l.href} className="group inline-flex items-center gap-1.5 hover:text-foreground">
@@ -129,8 +128,13 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
           </div>
         </div>
 
+        {/* Independent service disclosure */}
+        <p className="mt-10 rounded-xl border border-border/60 bg-secondary/20 px-4 py-3 text-center text-xs leading-relaxed text-muted-foreground">
+          {t('foot_independent_notice')}
+        </p>
+
         {/* Bottom bar */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-5 border-t border-border/60 pt-6 sm:flex-row">
+        <div className="mt-6 flex flex-col items-center justify-between gap-5 border-t border-border/60 pt-6 sm:flex-row">
           <p className="order-3 flex items-center gap-1.5 text-xs text-muted-foreground sm:order-1">
             <Lock className="h-3.5 w-3.5" /> {t('foot_safe')}
           </p>

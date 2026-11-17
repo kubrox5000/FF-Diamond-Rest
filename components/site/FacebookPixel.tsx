@@ -16,8 +16,8 @@ export function FacebookPixel() {
       .then((r) => r.json())
       .then((d) => {
         if (disposed) return
-        pixelId = d.facebookPixelId || ''
-        if (!pixelId) return
+        pixelId = typeof d.facebookPixelId === 'string' ? d.facebookPixelId.trim() : ''
+        if (!/^[A-Za-z0-9_-]{3,64}$/.test(pixelId)) return
         initPixel(pixelId)
         trackPage(pathname)
       })

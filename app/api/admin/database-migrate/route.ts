@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS "coupons" (
 CREATE TABLE IF NOT EXISTS "orders" (
   "id" serial PRIMARY KEY NOT NULL,
   "order_number" text NOT NULL,
+  "tracking_token" text NOT NULL,
   "package_id" integer NOT NULL,
   "diamonds" integer NOT NULL,
   "player_uid" text NOT NULL,
@@ -47,8 +48,14 @@ CREATE TABLE IF NOT EXISTS "orders" (
   "admin_notes" text,
   "created_at" timestamptz DEFAULT now() NOT NULL,
   "updated_at" timestamptz DEFAULT now() NOT NULL,
-  CONSTRAINT "orders_order_number_unique" UNIQUE("order_number")
+  CONSTRAINT "orders_order_number_unique" UNIQUE("order_number"),
+  CONSTRAINT "orders_tracking_token_unique" UNIQUE("tracking_token")
 );
+
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "tracking_token" text;
+UPDATE "orders" SET "tracking_token" = md5(random()::text || clock_timestamp()::text || "id"::text) WHERE "tracking_token" IS NULL;
+ALTER TABLE "orders" ALTER COLUMN "tracking_token" SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS "orders_tracking_token_unique" ON "orders" USING btree ("tracking_token");
 
 CREATE TABLE IF NOT EXISTS "packages" (
   "id" serial PRIMARY KEY NOT NULL,

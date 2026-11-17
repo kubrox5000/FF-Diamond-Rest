@@ -1,11 +1,10 @@
 'use client'
 
 import { memo } from 'react'
-import { Gem, Flame, Check, Trophy, Gift } from 'lucide-react'
+import { Gem, Flame, Check, Trophy, Sparkles } from 'lucide-react'
 import { cn } from '@/utils/cn'
-import { discountedPrice } from '@/lib/orders'
+import { discountedPrice, formatUsd } from '@/lib/orders'
 import { formatNumber } from '@/lib/currencies'
-import { formatUsd } from '@/lib/orders'
 import type { PublicPackage } from '@/lib/types'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
 
@@ -26,7 +25,7 @@ interface Props {
   freeGift?: string
 }
 
-function PackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
+function DiamondPackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
   const { t, currency, formatPrice } = useLocale()
   const finalUsd = discountedPrice(pkg.priceUsd, pkg.discountPct)
   const hasDiscount = pkg.discountPct > 0
@@ -71,7 +70,7 @@ function PackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
           </div>
           <div className="mt-0.5 flex items-center gap-1" translate="no">
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-bold text-emerald-400 ring-1 ring-emerald-500/30">
-              <Gift className="h-2.5 w-2.5 shrink-0" />
+              <Sparkles className="h-2.5 w-2.5 shrink-0" />
               +{formatNumber(giftDiamonds)} {t('pkg_free')}
             </span>
           </div>
@@ -106,7 +105,7 @@ function PackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
       </ul>
 
       <div className="mt-4 flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-xs font-semibold text-gold">
-        <Gift className="h-3.5 w-3.5 shrink-0" />
+        <Gem className="h-3.5 w-3.5 shrink-0" />
         <span className="line-clamp-2" translate="no">
           {t('pkg_gift_free', { n: formatNumber(giftDiamonds) })}
         </span>
@@ -152,4 +151,4 @@ function PackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
   return <div className={cardClassName}>{content}</div>
 }
 
-export const PackageCard = memo(PackageCardBase)
+export const PackageCard = memo(DiamondPackageCardBase)

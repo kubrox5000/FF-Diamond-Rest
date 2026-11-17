@@ -110,10 +110,6 @@ export default async function RootLayout({
             strategy="afterInteractive"
           />
         )}
-        <Script
-          src="https://shown.io/metrics/Aq8dlRyN8K"
-          strategy="afterInteractive"
-        />
       </body>
     </html>
   );

@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 import { hasValidTrackingToken, publicOrderDetails } from '@/lib/order-access'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
 import { getMockOrder } from '@/lib/mock-orders'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ orderNumber: string }> }) {
@@ -13,6 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orde
 
   const { orderNumber } = await params
   const token = req.headers.get('x-order-tracking-token')
+  if (isDatabaseConfigured()) await ensureOrdersSchema()
   const order = isDatabaseConfigured()
     ? (await db.select().from(orders).where(eq(orders.orderNumber, orderNumber)).limit(1))[0]
     : getMockOrder(orderNumber)

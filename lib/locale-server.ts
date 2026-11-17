@@ -1,9 +1,18 @@
 // Server-side locale resolution so the first render already matches the visitor.
 // Imported only from server components (App Router) — never from client code.
 import { headers, cookies } from 'next/headers'
-import { localeForCountry, FALLBACK_LOCALE, type Lang } from './currencies'
+import {
+  CURRENCIES,
+  FALLBACK_LOCALE,
+  extractSupportedBrowserLang,
+  isValidCountryCode,
+  localeForCountry,
+  type Lang,
+} from './currencies'
+import { DETECTED_COUNTRY_HEADER, extractGeoCountryFromHeaders } from './geo-server'
 
 export const OVERRIDE_COOKIE = 'ff_locale_lang'
+export const CURRENCY_OVERRIDE_COOKIE = 'ff_locale_currency'
 export const COUNTRY_COOKIE = 'ff_country'
 
 export interface ServerLocale {
@@ -12,51 +21,53 @@ export interface ServerLocale {
   countryCode?: string
 }
 
-/** Resolve the visitor's locale on the server, without any network call. */
+/** Resolve the visitor's locale on the server, without blocking rendering. */
 export async function resolveServerLocale(): Promise<ServerLocale> {
   const [h, c] = await Promise.all([headers(), cookies()])
 
-  // 1. Manual language override (persisted from the language switcher).
-  const override = c.get(OVERRIDE_COOKIE)?.value
+  // 1. Manual language & currency overrides (persisted from switchers).
+  const langOverride = c.get(OVERRIDE_COOKIE)?.value
   const storedLang: Lang | undefined =
-    override === 'en' || override === 'ar' || override === 'fr' || override === 'es'
-      ? (override as Lang)
+    langOverride === 'en' || langOverride === 'ar' || langOverride === 'fr' || langOverride === 'es'
+      ? (langOverride as Lang)
       : undefined
 
-  // 2. Country: prefer geo cookie, then CDN/Cloud geo headers, then Accept-Language header
-  let country =
-    c.get(COUNTRY_COOKIE)?.value ||
-    h.get('cf-ipcountry') ||
-    h.get('x-vercel-ip-country') ||
-    h.get('x-appengine-country') ||
-    h.get('x-country-code') ||
-    undefined
+  const rawCurrencyOverride = c.get(CURRENCY_OVERRIDE_COOKIE)?.value?.trim().toUpperCase()
+  const storedCurrency =
+    rawCurrencyOverride && Boolean(CURRENCIES[rawCurrencyOverride]) ? rawCurrencyOverride : undefined
+
+  // 2. Country: prefer proxy-resolved header, CDN geo headers, or valid geo cookie.
+  const detectedHeader = h.get(DETECTED_COUNTRY_HEADER)
+  const rawCookieCountry = c.get(COUNTRY_COOKIE)?.value
+  const geoCountry =
+    (isValidCountryCode(detectedHeader) ? detectedHeader.trim().toUpperCase() : undefined) ||
+    extractGeoCountryFromHeaders(h) ||
+    (isValidCountryCode(rawCookieCountry) ? rawCookieCountry.trim().toUpperCase() : undefined)
 
   const acceptLanguage = h.get('accept-language') ?? ''
-  let browserLang: Lang | undefined
+  const browserLang = extractSupportedBrowserLang(acceptLanguage)
 
-  if (!country) {
-    const m = acceptLanguage.match(/(?:^|,)\s*([a-z]{2})(?:-([A-Z]{2}))?/i)
+  // Only infer country from Accept-Language region subtag when it isn't the generic `en-US` browser default.
+  let inferredCountry = geoCountry
+  if (!inferredCountry) {
+    const m = acceptLanguage.match(/(?:^|,)\s*([a-z]{2})-([A-Z]{2})\b/i)
     if (m && m[2]) {
-      country = m[2].toUpperCase()
+      const langPart = m[1].toLowerCase()
+      const regionPart = m[2].toUpperCase()
+      if (!(langPart === 'en' && regionPart === 'US') && isValidCountryCode(regionPart)) {
+        inferredCountry = regionPart
+      }
     }
   }
 
-  // Detect preferred browser language among supported (ar, en, fr, es)
-  const langMatch = acceptLanguage.match(/(?:^|,)\s*(ar|en|fr|es)\b/i)
-  if (langMatch) {
-    browserLang = langMatch[1].toLowerCase() as Lang
-  }
-
-  if (country) country = country.toUpperCase()
-
-  const base = country
-    ? localeForCountry(country, browserLang)
+  const base = inferredCountry
+    ? localeForCountry(inferredCountry, browserLang)
     : browserLang
     ? { lang: browserLang, currency: browserLang === 'ar' ? 'SAR' : browserLang === 'fr' ? 'EUR' : 'USD' }
     : FALLBACK_LOCALE
 
   const lang: Lang = storedLang ?? base.lang
+  const currency: string = storedCurrency ?? base.currency
 
-  return { lang, currency: base.currency, countryCode: country }
+  return { lang, currency, countryCode: geoCountry }
 }

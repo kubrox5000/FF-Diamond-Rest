@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { db } from '@/db'
-import { paymentMethods } from '@/db/schemas'
+import { packages, paymentMethods } from '@/db/schemas'
 import { eq, asc } from 'drizzle-orm'
 import { SiteNav } from '@/components/site/SiteNav'
 import { SiteFooter } from '@/components/site/SiteFooter'
@@ -24,20 +24,28 @@ export async function generateMetadata() {
 }
 
 export default async function TopUpPage() {
-  const pkgRows: PublicPackage[] = listMockPackages().filter((p) => p.active)
+  let pkgRows: PublicPackage[] = listMockPackages().filter((p) => p.active)
   let methods: PublicPaymentMethod[] = listMockPaymentMethods().filter((m) => m.active)
   const settings = await getSettings()
 
   if (isDatabaseConfigured()) {
     try {
-      const dbMethods = await db
-        .select()
-        .from(paymentMethods)
-        .where(eq(paymentMethods.active, true))
-        .orderBy(asc(paymentMethods.sortOrder))
+      const [dbPackages, dbMethods] = await Promise.all([
+        db
+          .select()
+          .from(packages)
+          .where(eq(packages.active, true))
+          .orderBy(asc(packages.sortOrder)),
+        db
+          .select()
+          .from(paymentMethods)
+          .where(eq(paymentMethods.active, true))
+          .orderBy(asc(paymentMethods.sortOrder)),
+      ])
+      if (dbPackages.length > 0) pkgRows = dbPackages as unknown as PublicPackage[]
       methods = dbMethods as unknown as PublicPaymentMethod[]
     } catch {
-      // fallback to seed payment methods
+      // fallback to seed packages / payment methods
     }
   }
 

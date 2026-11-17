@@ -4,6 +4,7 @@ import { orders } from '@/db/schemas'
 import { and, eq } from 'drizzle-orm'
 import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
 import { getMockOrder } from '@/lib/mock-orders'
 import { hasValidTrackingToken } from '@/lib/order-access'
 
@@ -39,6 +40,8 @@ export async function GET(req: NextRequest) {
       }],
     })
   }
+
+  await ensureOrdersSchema()
 
   const rows = await db
     .select({

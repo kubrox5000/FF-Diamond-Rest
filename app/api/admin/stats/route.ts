@@ -4,6 +4,7 @@ import { orders } from '@/db/schemas'
 import { sql, eq, desc } from 'drizzle-orm'
 import { getAdminSession } from '@/lib/admin-session'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
 import { getMockOrderStats } from '@/lib/mock-orders'
 
 export async function GET() {
@@ -11,6 +12,8 @@ export async function GET() {
   if (!isDatabaseConfigured()) {
     return NextResponse.json(getMockOrderStats())
   }
+
+  await ensureOrdersSchema()
 
   const now = new Date()
   const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0)

@@ -41,10 +41,11 @@ export default async function HomePage() {
         '@type': 'Organization',
         '@id': `${base}/#organization`,
         name: 'FF Diamond',
+        legalName: 'FF Diamond LLC',
         url: base,
         logo: { '@type': 'ImageObject', '@id': `${base}/#logo`, url: `${base}/icon.png` },
         image: `${base}/icon.png`,
-        description: 'Instant Free Fire Diamonds top-up with secure payments.',
+        description: 'Independent digital Free Fire diamond top-up service via Player UID.',
         offers: pkgRows.slice(0, 6).map((p) => ({
           '@type': 'Offer',
           name: `${p.diamonds} Free Fire Diamonds`,

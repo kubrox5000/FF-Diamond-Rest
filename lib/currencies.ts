@@ -71,6 +71,7 @@ export const CURRENCIES: Record<string, CurrencyInfo> = {
   CZK: { code: 'CZK', name: 'Czech Koruna', symbol: 'Kč', rate: 23.2 },
   HUF: { code: 'HUF', name: 'Hungarian Forint', symbol: 'Ft', rate: 365 },
   RON: { code: 'RON', name: 'Romanian Leu', symbol: 'lei', rate: 4.6 },
+  PLN: { code: 'PLN', name: 'Polish Zloty', symbol: 'zł', rate: 4.05 },
   RUB: { code: 'RUB', name: 'Russian Ruble', symbol: '₽', rate: 92 },
 }
 
@@ -176,6 +177,7 @@ export const COUNTRY_LOCALE: Record<string, LocaleConfig> = {
   CZ: { lang: 'en', currency: 'CZK' },
   HUF: { lang: 'en', currency: 'HUF' },
   RO: { lang: 'en', currency: 'RON' },
+  PL: { lang: 'en', currency: 'PLN' },
   ZA: { lang: 'en', currency: 'ZAR' },
   NG: { lang: 'en', currency: 'NGN' },
   KE: { lang: 'en', currency: 'KES' },
@@ -211,6 +213,8 @@ const TIMEZONE_COUNTRY: Record<string, string> = {
   'Asia/Muscat': 'OM',
   'Asia/Bahrain': 'BH',
   'Asia/Jerusalem': 'PS',
+  'Asia/Gaza': 'PS',
+  'Asia/Hebron': 'PS',
   'Asia/Aden': 'YE',
 
   // Europe
@@ -227,11 +231,14 @@ const TIMEZONE_COUNTRY: Record<string, string> = {
   'Europe/Vienna': 'AT',
   'Europe/Dublin': 'IE',
   'Europe/Zurich': 'CH',
+  'Europe/Luxembourg': 'LU',
+  'Europe/Monaco': 'MC',
   'Europe/Stockholm': 'SE',
   'Europe/Oslo': 'NO',
   'Europe/Copenhagen': 'DK',
   'Europe/Helsinki': 'FI',
   'Europe/Athens': 'GR',
+  'Europe/Nicosia': 'CY',
   'Europe/Warsaw': 'PL',
   'Europe/Prague': 'CZ',
   'Europe/Budapest': 'HU',
@@ -258,8 +265,23 @@ const TIMEZONE_COUNTRY: Record<string, string> = {
   'America/Tijuana': 'MX',
   'America/Bogota': 'CO',
   'America/Buenos_Aires': 'AR',
+  'America/Argentina/Buenos_Aires': 'AR',
   'America/Santiago': 'CL',
   'America/Lima': 'PE',
+  'America/Caracas': 'VE',
+  'America/Guayaquil': 'EC',
+  'America/Guatemala': 'GT',
+  'America/Havana': 'CU',
+  'America/La_Paz': 'BO',
+  'America/Santo_Domingo': 'DO',
+  'America/Tegucigalpa': 'HN',
+  'America/Asuncion': 'PY',
+  'America/El_Salvador': 'SV',
+  'America/Managua': 'NI',
+  'America/Costa_Rica': 'CR',
+  'America/Panama': 'PA',
+  'America/Montevideo': 'UY',
+  'America/Puerto_Rico': 'PR',
   'America/Sao_Paulo': 'BR',
   'America/Fortaleza': 'BR',
   'America/Manaus': 'BR',
@@ -276,6 +298,7 @@ const TIMEZONE_COUNTRY: Record<string, string> = {
   'Asia/Singapore': 'SG',
   'Asia/Bangkok': 'TH',
   'Asia/Ho_Chi_Minh': 'VN',
+  'Asia/Saigon': 'VN',
   'Asia/Tokyo': 'JP',
   'Asia/Seoul': 'KR',
   'Australia/Sydney': 'AU',
@@ -287,6 +310,52 @@ const TIMEZONE_COUNTRY: Record<string, string> = {
   'Africa/Johannesburg': 'ZA',
   'Africa/Nairobi': 'KE',
   'Africa/Accra': 'GH',
+  'Africa/Dakar': 'SN',
+  'Africa/Abidjan': 'CI',
+  'Africa/Douala': 'CM',
+  'Africa/Bamako': 'ML',
+  'Africa/Conakry': 'GN',
+  'Africa/Lome': 'TG',
+  'Africa/Libreville': 'GA',
+  'Africa/Kinshasa': 'CD',
+  'Africa/Brazzaville': 'CG',
+  'Indian/Antananarivo': 'MG',
+}
+
+const INVALID_COUNTRY_CODES = new Set(['XX', 'T1', 'ZZ', 'A1', 'A2', 'O1'])
+
+export function isValidCountryCode(code?: string | null): code is string {
+  if (!code) return false
+  const upper = code.trim().toUpperCase()
+  return /^[A-Z]{2}$/.test(upper) && !INVALID_COUNTRY_CODES.has(upper)
+}
+
+export function extractSupportedBrowserLang(input?: string | readonly string[] | null): Lang | undefined {
+  if (!input) return undefined
+  const tags = Array.isArray(input)
+    ? input
+    : String(input)
+        .split(',')
+        .map((part) => {
+          const [tagPart, ...params] = part.trim().split(';')
+          let q = 1
+          for (const p of params) {
+            const m = p.trim().match(/^q=([0-9.]+)$/i)
+            if (m) q = Number.parseFloat(m[1]) || 0
+          }
+          return { tag: tagPart.trim(), q }
+        })
+        .sort((a, b) => b.q - a.q)
+        .map((item) => item.tag)
+
+  for (const raw of tags) {
+    if (!raw) continue
+    const primary = raw.trim().toLowerCase().split(/[-_]/)[0]
+    if (primary === 'ar' || primary === 'en' || primary === 'fr' || primary === 'es') {
+      return primary
+    }
+  }
+  return undefined
 }
 
 /** Resolve a country code from the browser timezone, if one is known. */

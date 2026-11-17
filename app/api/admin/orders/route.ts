@@ -4,6 +4,7 @@ import { orders } from '@/db/schemas'
 import { desc, eq, or, ilike, and, SQL } from 'drizzle-orm'
 import { getAdminSession } from '@/lib/admin-session'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
 import { deleteMockOrders, listMockOrders } from '@/lib/mock-orders'
 
 export async function GET(req: NextRequest) {
@@ -15,6 +16,8 @@ export async function GET(req: NextRequest) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json({ orders: listMockOrders({ status, q }) })
   }
+
+  await ensureOrdersSchema()
 
   const conditions: SQL[] = []
   if (status && status !== 'all') conditions.push(eq(orders.status, status))
@@ -45,6 +48,8 @@ export async function DELETE(req: NextRequest) {
     const count = deleteMockOrders({ status, q })
     return NextResponse.json({ ok: true, count })
   }
+
+  await ensureOrdersSchema()
 
   const conditions: SQL[] = []
   if (status && status !== 'all') conditions.push(eq(orders.status, status))

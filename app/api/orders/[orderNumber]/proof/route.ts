@@ -5,6 +5,7 @@ import { orders } from '@/db/schemas'
 import { eq } from 'drizzle-orm'
 import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
 import { getMockOrder, updateMockOrder } from '@/lib/mock-orders'
 
 const schema = z.object({
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 })
   }
 
+  if (isDatabaseConfigured()) await ensureOrdersSchema()
   const order = isDatabaseConfigured()
     ? (await db.select().from(orders).where(eq(orders.orderNumber, orderNumber)).limit(1))[0]
     : getMockOrder(orderNumber)

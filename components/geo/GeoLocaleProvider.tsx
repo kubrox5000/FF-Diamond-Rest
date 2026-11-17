@@ -16,6 +16,8 @@ import {
   localeForCountry,
   formatLocalPrice,
   countryFromTimezone,
+  extractSupportedBrowserLang,
+  isValidCountryCode,
   type Lang,
 } from '@/lib/currencies'
 import { t as translate, type TKey } from '@/lib/i18n'
@@ -51,35 +53,46 @@ interface State {
 async function detectCountryCode(): Promise<string | undefined> {
   const sources = [
     { url: 'https://ipwho.is/', parse: (j: Record<string, unknown>) => j.country_code },
+    { url: 'https://api.country.is/', parse: (j: Record<string, unknown>) => j.country },
     { url: 'https://freeipapi.com/api/json', parse: (j: Record<string, unknown>) => j.countryCode },
-    { url: 'https://ipapi.co/json/', parse: (j: Record<string, unknown>) => j.country_code },
   ]
-  for (const s of sources) {
-    try {
-      const ctrl = new AbortController()
-      const timer = setTimeout(() => ctrl.abort(), 2500)
-      const res = await fetch(s.url, { signal: ctrl.signal })
-      clearTimeout(timer)
-      if (!res.ok) continue
-      const json = (await res.json()) as Record<string, unknown>
-      const code = String(s.parse(json) ?? '').toUpperCase()
-      if (code && code.length === 2) return code
-    } catch {
-      // try next source
-    }
-  }
-  // Fallback: infer from browser language tags, e.g. 'ar-EG' → 'EG', 'fr-FR' → 'FR'.
-  if (typeof navigator !== 'undefined') {
-    const list = navigator.languages?.length ? navigator.languages : [navigator.language]
-    for (const l of list) {
-      if (!l) continue
-      const parts = l.split(/[-_]/)
-      if (parts.length > 1 && parts[1].length === 2) {
-        return parts[1].toUpperCase()
+
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 2000)
+
+  try {
+    const code = await Promise.any(
+      sources.map(async (s) => {
+        const res = await fetch(s.url, { signal: ctrl.signal })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const json = (await res.json()) as Record<string, unknown>
+        const raw = String(s.parse(json) ?? '')
+        if (!isValidCountryCode(raw)) throw new Error('Invalid country code')
+        return raw.trim().toUpperCase()
+      }),
+    )
+    ctrl.abort()
+    return code
+  } catch {
+    // Fallback: infer from browser language tags, e.g. 'ar-EG' -> 'EG', 'fr-FR' -> 'FR'.
+    if (typeof navigator !== 'undefined') {
+      const list = navigator.languages?.length ? navigator.languages : [navigator.language]
+      for (const l of list) {
+        if (!l) continue
+        const parts = l.split(/[-_]/)
+        if (parts.length > 1 && isValidCountryCode(parts[1])) {
+          const langPart = parts[0].toLowerCase()
+          const regionPart = parts[1].toUpperCase()
+          if (!(langPart === 'en' && regionPart === 'US')) {
+            return regionPart
+          }
+        }
       }
     }
+    return undefined
+  } finally {
+    clearTimeout(timer)
   }
-  return undefined
 }
 
 export function GeoLocaleProvider({
@@ -106,7 +119,7 @@ export function GeoLocaleProvider({
     document.documentElement.setAttribute('dir', dirOf(state.lang))
   }, [state.lang])
 
-  // Apply stored overrides and refine the country/currency automatically.
+  // Sync stored overrides and only run client geo fallback when SSR did not resolve a country.
   useEffect(() => {
     let cancelled = false
 
@@ -122,31 +135,68 @@ export function GeoLocaleProvider({
       storedCurrency = undefined
     }
 
-    if (storedLang) langOverrideRef.current = storedLang
-    if (storedCurrency) currencyOverrideRef.current = storedCurrency
+    if (storedLang) {
+      langOverrideRef.current = storedLang
+      try {
+        document.cookie = `${OVERRIDE_KEY}=${storedLang}; path=/; max-age=31536000; samesite=lax`
+      } catch {
+        // ignore
+      }
+    }
+    if (storedCurrency) {
+      currencyOverrideRef.current = storedCurrency
+      try {
+        document.cookie = `${CURRENCY_OVERRIDE_KEY}=${storedCurrency}; path=/; max-age=31536000; samesite=lax`
+      } catch {
+        // ignore
+      }
+    }
 
     if (storedLang || storedCurrency) {
-      setState((s) => ({
-        ...s,
-        lang: storedLang ?? s.lang,
-        currency: storedCurrency ?? s.currency,
-      }))
+      setState((s) => {
+        const nextLang = storedLang ?? s.lang
+        const nextCurrency = storedCurrency ?? s.currency
+        if (nextLang === s.lang && nextCurrency === s.currency) return s
+        return { ...s, lang: nextLang, currency: nextCurrency }
+      })
+    }
+
+    // Server already resolved visitor country (via CDN geo header, server IP lookup, or ff_country cookie).
+    // Skip client-side timezone/IP overrides so there is zero post-hydration flash or layout shift.
+    if (seeded.current?.countryCode) {
+      return () => {
+        cancelled = true
+      }
     }
 
     const setLocale = (lang: Lang, currency: string, countryCode: string) => {
       if (cancelled) return
-      setState((s) => ({
-        ...s,
-        status: 'ready',
-        lang: langOverrideRef.current ?? lang,
-        currency: currencyOverrideRef.current ?? currency,
-        countryCode,
-      }))
+      setState((s) => {
+        const nextLang = langOverrideRef.current ?? lang
+        const nextCurrency = currencyOverrideRef.current ?? currency
+        if (
+          s.status === 'ready' &&
+          s.lang === nextLang &&
+          s.currency === nextCurrency &&
+          s.countryCode === countryCode
+        ) {
+          return s
+        }
+        return {
+          status: 'ready',
+          lang: nextLang,
+          currency: nextCurrency,
+          countryCode,
+        }
+      })
     }
 
-    const browserLang = typeof navigator !== 'undefined' ? navigator.language : undefined
+    const browserLang =
+      typeof navigator !== 'undefined'
+        ? extractSupportedBrowserLang(navigator.languages?.length ? navigator.languages : [navigator.language])
+        : undefined
 
-    // 1. Instant check from timezone (0ms)
+    // 1. Instant fallback check from timezone (0ms) when server had no public IP/geo header
     const tz = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined
     const tzCountry = countryFromTimezone(tz)
 
@@ -155,7 +205,7 @@ export function GeoLocaleProvider({
       setLocale(base.lang, base.currency, tzCountry)
     }
 
-    // 2. Refine via IP lookup in background
+    // 2. Race IP-geo providers in parallel to refine & persist ff_country cookie for future SSR requests
     void (async () => {
       const countryCode = await detectCountryCode()
       if (!countryCode || cancelled) return
