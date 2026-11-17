@@ -3,12 +3,18 @@ import { db } from '@/db'
 import { orders } from '@/db/schemas'
 import { desc, eq, or, ilike, and, SQL } from 'drizzle-orm'
 import { getAdminSession } from '@/lib/admin-session'
+import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { deleteMockOrders, listMockOrders } from '@/lib/mock-orders'
 
 export async function GET(req: NextRequest) {
   if (!(await getAdminSession())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const status = req.nextUrl.searchParams.get('status')?.trim()
   const q = req.nextUrl.searchParams.get('q')?.trim()
+
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ orders: listMockOrders({ status, q }) })
+  }
 
   const conditions: SQL[] = []
   if (status && status !== 'all') conditions.push(eq(orders.status, status))
@@ -34,6 +40,11 @@ export async function DELETE(req: NextRequest) {
 
   const status = req.nextUrl.searchParams.get('status')?.trim()
   const q = req.nextUrl.searchParams.get('q')?.trim()
+
+  if (!isDatabaseConfigured()) {
+    const count = deleteMockOrders({ status, q })
+    return NextResponse.json({ ok: true, count })
+  }
 
   const conditions: SQL[] = []
   if (status && status !== 'all') conditions.push(eq(orders.status, status))

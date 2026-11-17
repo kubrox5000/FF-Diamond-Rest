@@ -4,6 +4,8 @@ import { db } from '@/db'
 import { paymentMethods } from '@/db/schemas'
 import { eq } from 'drizzle-orm'
 import { getAdminSession } from '@/lib/admin-session'
+import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { deleteMockPaymentMethod, updateMockPaymentMethod } from '@/lib/mock-admin-store'
 
 const schema = z.object({
   key: z.string().min(1).max(60).optional(),
@@ -34,6 +36,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (d.active !== undefined) update.active = d.active
   if (d.sortOrder !== undefined) update.sortOrder = d.sortOrder
 
+  if (!isDatabaseConfigured()) {
+    try {
+      const updated = updateMockPaymentMethod(Number(id), update)
+      if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      return NextResponse.json({ method: updated })
+    } catch {
+      return NextResponse.json({ error: 'A payment method with this key already exists' }, { status: 409 })
+    }
+  }
+
   let updated
   try {
     const rows = await db
@@ -56,6 +68,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await getAdminSession())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
+  if (!isDatabaseConfigured()) {
+    const ok = deleteMockPaymentMethod(Number(id))
+    if (!ok) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ ok: true })
+  }
   await db.delete(paymentMethods).where(eq(paymentMethods.id, Number(id)))
   return NextResponse.json({ ok: true })
 }

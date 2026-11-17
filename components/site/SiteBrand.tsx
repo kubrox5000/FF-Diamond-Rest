@@ -1,27 +1,41 @@
 'use client'
 
-// SiteBrand — reads from a global injected by the server layout (no extra fetch).
-// Falls back gracefully when the script tag is absent (e.g. Storybook / tests).
+import { createContext, useContext, type ReactNode } from 'react'
 
-declare global {
-  interface Window {
-    __FF_BRAND__?: { siteName: string; logo: string }
-  }
+export interface BrandConfig {
+  siteName: string
+  logo: string
 }
 
-function getBrand() {
-  return { siteName: 'FF Diamond', logo: '' }
+const DEFAULT_BRAND: BrandConfig = {
+  siteName: 'FF Diamond',
+  logo: '',
+}
+
+const SiteBrandContext = createContext<BrandConfig>(DEFAULT_BRAND)
+
+export function SiteBrandProvider({
+  initialBrand,
+  children,
+}: {
+  initialBrand?: Partial<BrandConfig>
+  children: ReactNode
+}) {
+  const value: BrandConfig = {
+    siteName: initialBrand?.siteName?.trim() || DEFAULT_BRAND.siteName,
+    logo: initialBrand?.logo?.trim() || DEFAULT_BRAND.logo,
+  }
+  return <SiteBrandContext.Provider value={value}>{children}</SiteBrandContext.Provider>
 }
 
 export function SiteBrand({ nameClass = 'text-lg font-extrabold tracking-tight text-gradient' }: { nameClass?: string }) {
-  const { siteName, logo } = getBrand()
-  const name = siteName?.trim() || 'FF Diamond'
-  const src  = logo?.trim() || ''
+  const brand = useContext(SiteBrandContext)
+  const name = brand.siteName || DEFAULT_BRAND.siteName
+  const src = brand.logo || ''
 
   return (
     <>
       {src ? (
-         
         <img src={src} alt={name} className="h-8 w-auto max-w-40 object-contain" />
       ) : (
         <span className="text-2xl diamond-float leading-none" aria-hidden>💎</span>
@@ -30,3 +44,4 @@ export function SiteBrand({ nameClass = 'text-lg font-extrabold tracking-tight t
     </>
   )
 }
+

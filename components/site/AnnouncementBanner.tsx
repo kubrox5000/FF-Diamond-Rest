@@ -17,7 +17,7 @@ export function AnnouncementBanner({ announcements }: { announcements: Record<st
       </div>
       <button
         onClick={() => setShow(false)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+        className="absolute end-3 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
         aria-label={t('announcement_dismiss')}
       >
         <X className="h-4 w-4" />

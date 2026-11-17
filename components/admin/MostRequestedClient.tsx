@@ -4,20 +4,32 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Gem, Plus, Trash2, Flame, Star } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/utils/cn'
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
+import { adminFetch } from '@/lib/admin-fetch'
 import type { PublicPackage } from '@/lib/types'
 
 export function MostRequestedClient() {
   const [packages, setPackages] = useState<PublicPackage[] | null>(null)
   const [addingId, setAddingId] = useState<number | ''>('')
   const [busy, setBusy] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState<PublicPackage | null>(null)
 
   async function load() {
-    const res = await fetch('/api/admin/packages')
-    const data = await res.json()
-    setPackages(data.packages ?? [])
+    try {
+      const res = await adminFetch('/api/admin/packages')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to load packages')
+        setPackages([])
+        return
+      }
+      setPackages(data.packages ?? [])
+    } catch {
+      toast.error('Failed to load packages')
+      setPackages([])
+    }
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => { void load() }, [])
 
   // الباقات الظاهرة في قسم «الأكثر طلبًا» على الصفحة الرئيسية
   const featured = useMemo(
@@ -35,7 +47,7 @@ export function MostRequestedClient() {
     const id = Number(addingId)
     setBusy(true)
     try {
-      const res = await fetch(`/api/admin/packages/${id}`, {
+      const res = await adminFetch(`/api/admin/packages/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ popular: true }),
@@ -43,22 +55,21 @@ export function MostRequestedClient() {
       if (!res.ok) return toast.error('Add failed')
       toast.success('Added to Most Requested')
       setAddingId('')
-      load()
+      void load()
     } finally {
       setBusy(false)
     }
   }
 
-  async function remove(p: PublicPackage) {
-    if (!confirm(`Remove ${p.diamonds.toLocaleString()} 💎 from Most Requested?`)) return
-    const res = await fetch(`/api/admin/packages/${p.id}`, {
+  async function executeRemove(p: PublicPackage) {
+    const res = await adminFetch(`/api/admin/packages/${p.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ popular: false, flashSale: false }),
     })
     if (!res.ok) return toast.error('Remove failed')
     toast.success('Removed from Most Requested')
-    load()
+    void load()
   }
 
   return (
@@ -123,7 +134,7 @@ export function MostRequestedClient() {
                   {p.bonusDiamonds > 0 && <span className="text-xs font-semibold text-emerald-400">+{p.bonusDiamonds}</span>}
                 </div>
                 <button
-                  onClick={() => remove(p)}
+                  onClick={() => setConfirmRemove(p)}
                   className="grid h-8 w-8 place-items-center rounded-lg border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
                   title="Remove from Most Requested"
                 >
@@ -136,7 +147,7 @@ export function MostRequestedClient() {
                 {p.flashSale && <span className="flex items-center gap-1 rounded-full bg-gold/20 px-2 py-0.5 text-gold"><Flame className="h-2.5 w-2.5" /> Flash</span>}
               </div>
               <button
-                onClick={() => remove(p)}
+                onClick={() => setConfirmRemove(p)}
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary/40 px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-300"
               >
                 <Trash2 className="h-3.5 w-3.5" /> Remove from section
@@ -145,6 +156,18 @@ export function MostRequestedClient() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(confirmRemove)}
+        onOpenChange={(open) => { if (!open) setConfirmRemove(null) }}
+        title="Remove Package"
+        description={confirmRemove ? `Remove ${confirmRemove.diamonds.toLocaleString()} 💎 from Most Requested?` : ''}
+        confirmLabel="Remove"
+        onConfirm={async () => {
+          const target = confirmRemove
+          setConfirmRemove(null)
+          if (target) await executeRemove(target)
+        }}
+      />
     </div>
   )
 }

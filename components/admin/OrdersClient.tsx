@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Search, Download, Eye, Loader2, X, Check, Ban, ImageOff, Trash2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
 import { STATUS_META, ORDER_STATUSES, type OrderStatus } from '@/lib/orders'
+import { adminFetch } from '@/lib/admin-fetch'
 import { cn } from '@/utils/cn'
 import type { PublicOrder } from '@/lib/types'
 
@@ -13,19 +15,22 @@ const FILTERS: { value: string; label: string }[] = [
   ...ORDER_STATUSES.map((s) => ({ value: s, label: STATUS_META[s].label })),
 ]
 
-/** Normalize a stored phone into a clean, consistent "+COUNTRYXXXX XXXX" display. */
+/** Normalize stored phone display without corrupting non-Morocco international numbers. */
 function formatPhone(raw: string | null | undefined): string {
-  const v = raw?.replace(/\D/g, '') ?? ''
+  const trimmed = raw?.trim() ?? ''
+  if (!trimmed) return '—'
+  if (trimmed.startsWith('+')) {
+    return trimmed.replace(/\s+/g, ' ')
+  }
+  const v = trimmed.replace(/\D/g, '')
   if (!v) return '—'
-  let num = v
-  // Drop a stray country code stuck at the end (legacy entries like "65656565656 212+").
-  if (num.endsWith('212') && num.length > 11) num = num.slice(0, -3)
-  // Keep an existing leading country code, otherwise assume Morocco (+212).
-  num = num.startsWith('212') ? num : '212' + num
-  num = num.replace(/^2120/, '212') // normalize the local "0".
-  const national = num.slice(3)
-  const grouped = national.replace(/(\d{1,3})(?=(\d{2})+$)/g, '$1 ')
-  return `+${num.slice(0, 3)} ${grouped}`
+  if (v.startsWith('212')) {
+    const normalized = v.replace(/^2120/, '212')
+    const national = normalized.slice(3)
+    const grouped = national.replace(/(\d{1,3})(?=(\d{2})+$)/g, '$1 ')
+    return `+212 ${grouped}`.trim()
+  }
+  return `+${v}`
 }
 
 export function OrdersClient() {
@@ -34,28 +39,43 @@ export function OrdersClient() {
   const [status, setStatus] = useState('all')
   const [selected, setSelected] = useState<PublicOrder | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  const [confirmState, setConfirmState] = useState<
+    | { type: 'single'; order: PublicOrder }
+    | { type: 'all' }
+    | null
+  >(null)
 
   const load = useCallback(async () => {
     setOrders(null)
-    const p = new URLSearchParams()
-    if (status !== 'all') p.set('status', status)
-    if (q.trim()) p.set('q', q.trim())
-    const res = await fetch(`/api/admin/orders?${p.toString()}`)
-    const data = await res.json()
-    setOrders(data.orders ?? [])
+    try {
+      const p = new URLSearchParams()
+      if (status !== 'all') p.set('status', status)
+      if (q.trim()) p.set('q', q.trim())
+      const res = await adminFetch(`/api/admin/orders?${p.toString()}`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to load orders')
+        setOrders([])
+        return
+      }
+      setOrders(data.orders ?? [])
+    } catch {
+      toast.error('Failed to load orders')
+      setOrders([])
+    }
   }, [q, status])
 
   useEffect(() => {
-    load()
+    void load()
   }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function update(order: PublicOrder, patch: { status?: string; adminNotes?: string }) {
-    const res = await fetch(`/api/admin/orders/${order.id}`, {
+    const res = await adminFetch(`/api/admin/orders/${order.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
     })
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       toast.error(data.error || 'Update failed')
       return
@@ -65,11 +85,9 @@ export function OrdersClient() {
     if (selected?.id === order.id) setSelected(data.order)
   }
 
-  async function remove(order: PublicOrder) {
-    const confirmed = window.confirm(`Delete order ${order.orderNumber}? This cannot be undone.`)
-    if (!confirmed) return
-    const res = await fetch(`/api/admin/orders/${order.id}`, { method: 'DELETE' })
-    const data = await res.json()
+  async function executeRemove(order: PublicOrder) {
+    const res = await adminFetch(`/api/admin/orders/${order.id}`, { method: 'DELETE' })
+    const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       toast.error(data.error || 'Delete failed')
       return
@@ -79,15 +97,12 @@ export function OrdersClient() {
     if (selected?.id === order.id) setSelected(null)
   }
 
-  async function deleteAll() {
-    const scope = status !== 'all' ? ` ${STATUS_META[status as OrderStatus].label.toLowerCase()}` : ''
-    const confirmed = window.confirm(`Delete ALL${scope} orders? This cannot be undone.`)
-    if (!confirmed) return
+  async function executeDeleteAll() {
     const p = new URLSearchParams()
     if (status !== 'all') p.set('status', status)
     if (q.trim()) p.set('q', q.trim())
-    const res = await fetch(`/api/admin/orders?${p.toString()}`, { method: 'DELETE' })
-    const data = await res.json()
+    const res = await adminFetch(`/api/admin/orders?${p.toString()}`, { method: 'DELETE' })
+    const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       toast.error(data.error || 'Delete all failed')
       return
@@ -97,6 +112,35 @@ export function OrdersClient() {
     setSelected(null)
   }
 
+  async function exportCsv() {
+    try {
+      const res = await adminFetch('/api/admin/orders/export')
+      if (!res.ok) {
+        toast.error('Export failed')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Export failed')
+    }
+  }
+
+  function remove(order: PublicOrder) {
+    setConfirmState({ type: 'single', order })
+  }
+
+  function deleteAll() {
+    setConfirmState({ type: 'all' })
+  }
+
+  const scope = status !== 'all' ? ` ${STATUS_META[status as OrderStatus].label.toLowerCase()}` : ''
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -104,15 +148,15 @@ export function OrdersClient() {
           <h1 className="text-2xl font-extrabold">Orders</h1>
           <p className="text-sm text-muted-foreground">Manage and process customer orders</p>
         </div>
-        {/* Native anchor so the browser downloads the CSV the API returns. */}
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- non-navigation download */}
-        <a
-          href="/api/admin/orders/export"
+        <button
+          type="button"
+          onClick={() => void exportCsv()}
           className="flex items-center gap-2 rounded-xl border border-border bg-secondary/60 px-4 py-2.5 text-sm font-semibold hover:bg-secondary"
         >
           <Download className="h-4 w-4" /> Export CSV
-        </a>
+        </button>
         <button
+          type="button"
           onClick={deleteAll}
           className="flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-300 transition-colors hover:bg-rose-500/20"
         >
@@ -251,6 +295,26 @@ export function OrdersClient() {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(confirmState)}
+        onOpenChange={(open) => { if (!open) setConfirmState(null) }}
+        title={confirmState?.type === 'all' ? 'Delete Orders' : 'Delete Order'}
+        description={
+          confirmState?.type === 'all'
+            ? `Delete ALL${scope} orders? This cannot be undone.`
+            : confirmState
+              ? `Delete order ${confirmState.order.orderNumber}? This cannot be undone.`
+              : ''
+        }
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          const target = confirmState
+          setConfirmState(null)
+          if (!target) return
+          if (target.type === 'all') await executeDeleteAll()
+          else await executeRemove(target.order)
+        }}
+      />
     </div>
   )
 }
@@ -264,7 +328,7 @@ function OrderDrawer({
   order: PublicOrder
   onClose: () => void
   onUpdate: (o: PublicOrder, patch: { status?: string; adminNotes?: string }) => Promise<void>
-  onDelete: (o: PublicOrder) => Promise<void>
+  onDelete: (o: PublicOrder) => void
 }) {
   const [notes, setNotes] = useState(order.adminNotes ?? '')
   const [status, setStatus] = useState(order.status)

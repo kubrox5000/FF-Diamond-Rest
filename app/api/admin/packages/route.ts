@@ -5,6 +5,8 @@ import { packages } from '@/db/schemas'
 import { asc } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import { getAdminSession } from '@/lib/admin-session'
+import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { createMockPackage, listMockPackages } from '@/lib/mock-admin-store'
 
 const schema = z.object({
   diamonds: z.number().int().positive(),
@@ -21,6 +23,9 @@ const schema = z.object({
 
 export async function GET() {
   if (!(await getAdminSession())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ packages: listMockPackages() })
+  }
   const rows = await db.select().from(packages).orderBy(asc(packages.sortOrder))
   return NextResponse.json({ packages: rows })
 }
@@ -31,6 +36,21 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 })
   const d = parsed.data
+  if (!isDatabaseConfigured()) {
+    const inserted = createMockPackage({
+      diamonds: d.diamonds,
+      bonusDiamonds: d.bonusDiamonds,
+      priceUsd: d.priceUsd.toFixed(2),
+      priceUsdt: d.priceUsdt.toFixed(2),
+      discountPct: d.discountPct,
+      popular: d.popular,
+      flashSale: d.flashSale,
+      deliveryEta: d.deliveryEta,
+      active: d.active,
+      sortOrder: d.sortOrder,
+    })
+    return NextResponse.json({ package: inserted })
+  }
   const inserted = (
     await db
       .insert(packages)

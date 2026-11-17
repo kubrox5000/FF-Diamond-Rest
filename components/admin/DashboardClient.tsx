@@ -9,6 +9,7 @@ import {
 } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 import { STATUS_META, type OrderStatus } from '@/lib/orders'
+import { adminFetch } from '@/lib/admin-fetch'
 import { cn } from '@/utils/cn'
 
 interface Stats {
@@ -27,13 +28,40 @@ interface Data {
 
 export function DashboardClient() {
   const [data, setData] = useState<Data | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function loadStats() {
+    setError(null)
+    try {
+      const r = await adminFetch('/api/admin/stats')
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok || !d?.stats) {
+        throw new Error(d?.error || 'Failed to load dashboard stats')
+      }
+      setData(d as Data)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load dashboard stats')
+    }
+  }
 
   useEffect(() => {
-    fetch('/api/admin/stats')
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => {})
+    void loadStats()
   }, [])
+
+  if (error) {
+    return (
+      <div className="glass rounded-2xl border border-rose-500/30 p-6 text-center">
+        <p className="text-sm font-medium text-rose-300">{error}</p>
+        <button
+          type="button"
+          onClick={() => void loadStats()}
+          className="mt-3 rounded-xl border border-border bg-secondary px-4 py-2 text-xs font-semibold hover:bg-secondary/80"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
 
   if (!data) {
     return (

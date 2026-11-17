@@ -4,6 +4,8 @@ import { coupons } from '@/db/schemas'
 import { eq } from 'drizzle-orm'
 import { validateDiscountPct } from '@/lib/orders'
 import { enforceRateLimit } from '@/lib/distributed-rate-limit'
+import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { findMockCoupon } from '@/lib/mock-admin-store'
 
 export async function POST(req: NextRequest) {
   const rateLimitResponse = await enforceRateLimit(req, 'coupons:validate', 20, 60)
@@ -13,7 +15,9 @@ export async function POST(req: NextRequest) {
   const code = (body?.code ?? '').toString().trim().toUpperCase()
   if (!code) return NextResponse.json({ valid: false, error: 'Enter a code' }, { status: 400 })
 
-  const coupon = (await db.select().from(coupons).where(eq(coupons.code, code)).limit(1))[0]
+  const coupon = isDatabaseConfigured()
+    ? (await db.select().from(coupons).where(eq(coupons.code, code)).limit(1))[0]
+    : findMockCoupon(code)
   const discountPct = validateDiscountPct(coupon?.discountPct)
   if (!coupon || !coupon.active || (coupon.maxUses && coupon.usedCount >= coupon.maxUses) || discountPct === null) {
     return NextResponse.json({ valid: false, error: 'Invalid or expired code' }, { status: 200 })

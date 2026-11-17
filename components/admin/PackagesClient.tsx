@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, X, Gem } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
+import { adminFetch } from '@/lib/admin-fetch'
 import { cn } from '@/utils/cn'
 import type { PublicPackage } from '@/lib/types'
 
@@ -21,17 +23,27 @@ const EMPTY: Draft = {
 export function PackagesClient() {
   const [packages, setPackages] = useState<PublicPackage[] | null>(null)
   const [editing, setEditing] = useState<{ id: number | null; draft: Draft } | null>(null)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
 
   async function load() {
-    const res = await fetch('/api/admin/packages')
-    const data = await res.json()
-    setPackages(data.packages ?? [])
+    try {
+      const res = await adminFetch('/api/admin/packages')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to load packages')
+        setPackages([])
+        return
+      }
+      setPackages(data.packages ?? [])
+    } catch {
+      toast.error('Failed to load packages')
+      setPackages([])
+    }
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => { void load() }, [])
 
-  async function remove(id: number) {
-    if (!confirm('Delete this package?')) return
-    const res = await fetch(`/api/admin/packages/${id}`, { method: 'DELETE' })
+  async function executeRemove(id: number) {
+    const res = await adminFetch(`/api/admin/packages/${id}`, { method: 'DELETE' })
     if (!res.ok) return toast.error('Delete failed')
     toast.success('Package deleted')
     setPackages((p) => p?.filter((x) => x.id !== id) ?? null)
@@ -40,14 +52,14 @@ export function PackagesClient() {
   async function toggleActive(p: PublicPackage) {
     const next = !p.active
     setPackages((list) => list?.map((x) => (x.id === p.id ? { ...x, active: next } : x)) ?? null)
-    const res = await fetch(`/api/admin/packages/${p.id}`, {
+    const res = await adminFetch(`/api/admin/packages/${p.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: next }),
     })
     if (!res.ok) {
       toast.error('Update failed')
-      load()
+      void load()
       return
     }
     toast.success(next ? 'Package enabled' : 'Package disabled')
@@ -56,16 +68,16 @@ export function PackagesClient() {
   async function save() {
     if (!editing) return
     const { id, draft } = editing
-    const res = await fetch(id ? `/api/admin/packages/${id}` : '/api/admin/packages', {
+    const res = await adminFetch(id ? `/api/admin/packages/${id}` : '/api/admin/packages', {
       method: id ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(draft),
     })
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
     if (!res.ok) return toast.error(data.error || 'Save failed')
     toast.success(id ? 'Package updated' : 'Package created')
     setEditing(null)
-    load()
+    void load()
   }
 
   return (
@@ -103,7 +115,7 @@ export function PackagesClient() {
                     priceUsdt: parseFloat(p.priceUsdt), discountPct: p.discountPct, popular: p.popular,
                     flashSale: p.flashSale, deliveryEta: p.deliveryEta, active: p.active, sortOrder: p.sortOrder,
                   } })} className="grid h-8 w-8 place-items-center rounded-lg border border-border hover:bg-secondary"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => remove(p.id)} className="grid h-8 w-8 place-items-center rounded-lg border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setDeleteId(p.id)} className="grid h-8 w-8 place-items-center rounded-lg border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
               <p className="mt-3 text-lg font-bold text-gold" translate="no">${parseFloat(p.priceUsd).toFixed(2)}</p>
@@ -163,6 +175,19 @@ export function PackagesClient() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteId(null) }}
+        title="Delete Package"
+        description="Are you sure you want to delete this diamond package?"
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          const target = deleteId
+          setDeleteId(null)
+          if (target !== null) await executeRemove(target)
+        }}
+      />
     </div>
   )
 }

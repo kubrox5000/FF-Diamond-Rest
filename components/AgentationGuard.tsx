@@ -5,7 +5,7 @@ import {
   setAgentationFeedbackMode,
   subscribeAgentationFeedbackFromParent,
 } from '@/lib/agentationFeedbackMode'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 function postPreviewCopy(text: string) {
   const parentOrigin =
@@ -60,6 +60,7 @@ function buildStandardMarkdown(annotations: Annotation[]) {
 }
 
 export function AgentationGuard() {
+  const [mounted, setMounted] = useState(false)
   const annotationsRef = useRef<Annotation[]>([])
 
   const syncPreview = useCallback(() => {
@@ -101,6 +102,7 @@ export function AgentationGuard() {
 
   useEffect(() => {
     if (process.env.NODE_ENV !== 'development') return
+    setMounted(true)
 
     const unsubMessage = subscribeAgentationFeedbackFromParent()
 
@@ -117,7 +119,7 @@ export function AgentationGuard() {
     }
   }, [])
 
-  if (process.env.NODE_ENV !== 'development') {
+  if (process.env.NODE_ENV !== 'development' || !mounted) {
     return null
   }
 

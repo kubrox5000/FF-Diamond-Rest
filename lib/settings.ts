@@ -121,8 +121,14 @@ function parseSettingsRaw(raw: string): Partial<SiteSettings> {
   }
 }
 
+const globalForMockSettings = globalThis as unknown as {
+  __ffMockSettings?: Partial<SiteSettings>
+}
+
 async function readSettingsRaw(): Promise<SiteSettings> {
-  if (!isDatabaseConfigured()) return DEFAULTS
+  if (!isDatabaseConfigured()) {
+    return { ...DEFAULTS, ...(globalForMockSettings.__ffMockSettings ?? {}) }
+  }
   let rawSql: ReturnType<typeof postgres> | null = null
   try {
     rawSql = getRawSql()
@@ -147,10 +153,17 @@ const getSettingsCached = unstable_cache(readSettingsRaw, ['site-settings'], {
 })
 
 export async function getSettings(): Promise<SiteSettings> {
+  if (!isDatabaseConfigured()) return readSettingsRaw()
   return getSettingsCached()
 }
 
 export async function saveSettings(data: Partial<SiteSettings>): Promise<SiteSettings> {
+  if (!isDatabaseConfigured()) {
+    const merged = { ...DEFAULTS, ...(globalForMockSettings.__ffMockSettings ?? {}), ...data }
+    globalForMockSettings.__ffMockSettings = merged
+    return merged
+  }
+
   const rawSql = getRawSql()
   try {
     // Read current values directly from DB (bypasses all caching)

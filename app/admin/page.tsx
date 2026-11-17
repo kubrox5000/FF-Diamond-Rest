@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2, Lock, User, Database, Eye, EyeOff, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { adminFetch } from '@/lib/admin-fetch'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -20,10 +21,12 @@ export default function AdminLoginPage() {
   const [currentDb, setCurrentDb] = useState('')
 
   useEffect(() => {
-    fetch('/api/admin/database-setup')
-      .then((r) => r.json())
-      .then((d: { configured: boolean; masked: string }) => {
-        if (d.configured) setCurrentDb(d.masked)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
+    if (!token) return
+    adminFetch('/api/admin/database-setup')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { configured?: boolean; masked?: string } | null) => {
+        if (d?.configured) setCurrentDb(d.masked ?? '')
       })
       .catch(() => {})
   }, [])
@@ -57,13 +60,18 @@ export default function AdminLoginPage() {
     setDbStatus('saving')
     setDbMessage('')
     try {
-      const res = await fetch('/api/admin/database-setup', {
+      const res = await adminFetch('/api/admin/database-setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: dbUrl.trim() }),
       })
+      if (res.status === 401) {
+        setDbStatus('error')
+        setDbMessage('Please sign in first before connecting a database.')
+        return
+      }
       const data = await res.json() as { ok?: boolean; error?: string; tables?: string[] }
-      if (data.ok) {
+      if (res.ok && data.ok) {
         setDbStatus('success')
         setDbMessage(`Connected! ${data.tables?.length ?? 0} table(s) found.`)
         setCurrentDb(dbUrl.trim().replace(/:\/\/[^@]+@/, '://****:****@'))

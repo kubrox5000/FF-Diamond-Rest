@@ -1,14 +1,15 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Geist, Geist_Mono } from 'next/font/google';
-import { Analytics } from '@vercel/analytics/next';
 import { AgentationGuard } from '@/components/AgentationGuard';
 import { HappySeedsWatermark } from '@/components/HappySeedsWatermark';
 import { FacebookPixel } from '@/components/site/FacebookPixel';
 import { AdPixels } from '@/components/site/AdPixels';
 import { GeoLocaleProvider } from '@/components/geo/GeoLocaleProvider';
+import { SiteBrandProvider } from '@/components/site/SiteBrand';
 import { PageProgress } from '@/components/site/PageProgress';
 import { resolveServerLocale } from '@/lib/locale-server';
+import { getSettings } from '@/lib/settings';
 import { dirOf } from '@/lib/currencies';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
@@ -61,9 +62,23 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialLocale = await resolveServerLocale();
+  const [initialLocale, settings] = await Promise.all([
+    resolveServerLocale(),
+    getSettings(),
+  ]);
+  const initialBrand = {
+    siteName: settings.siteName || 'FF Diamond',
+    logo: settings.logo || '',
+  };
+
   return (
-    <html lang={initialLocale.lang} dir={dirOf(initialLocale.lang)} className="dark" suppressHydrationWarning>
+    <html
+      lang={initialLocale.lang}
+      dir={dirOf(initialLocale.lang)}
+      data-scroll-behavior="smooth"
+      className="dark"
+      suppressHydrationWarning
+    >
       <head>
         {/* ── Performance hints ────────────────────────────────────────────── */}
         {/* DNS prefetch + preconnect للخطوط وأي CDN خارجي */}
@@ -74,7 +89,20 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://googletagmanager.com" />
         <link rel="dns-prefetch" href="https://analytics.tiktok.com" />
         <link rel="dns-prefetch" href="https://sc-static.net" />
-        {/* Inject brand data before any JS runs — eliminates the /api/site-brand fetch */}
+      </head>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {/* شريط التقدم عند الانتقال بين الصفحات */}
+        <PageProgress />
+        <SiteBrandProvider initialBrand={initialBrand}>
+          <GeoLocaleProvider initialLocale={initialLocale}>{children}</GeoLocaleProvider>
+        </SiteBrandProvider>
+        <Toaster position="top-center" richColors closeButton />
+        <FacebookPixel />
+        <AdPixels />
+        <HappySeedsWatermark />
+        <AgentationGuard />
         {process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL && (
           <Script
             src={process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL}
@@ -86,19 +114,6 @@ export default async function RootLayout({
           src="https://shown.io/metrics/Aq8dlRyN8K"
           strategy="afterInteractive"
         />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {/* شريط التقدم عند الانتقال بين الصفحات */}
-        <PageProgress />
-        <GeoLocaleProvider initialLocale={initialLocale}>{children}</GeoLocaleProvider>
-        <Toaster position="top-center" richColors closeButton />
-        <FacebookPixel />
-        <AdPixels />
-        <HappySeedsWatermark />
-        <AgentationGuard />
-        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   );

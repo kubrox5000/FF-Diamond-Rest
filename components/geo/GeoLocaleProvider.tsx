@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  CURRENCIES,
   dirOf,
   localeForCountry,
   formatLocalPrice,
@@ -21,6 +22,8 @@ import { t as translate, type TKey } from '@/lib/i18n'
 import type { ServerLocale } from '@/lib/locale-server'
 
 const OVERRIDE_KEY = 'ff_locale_lang'
+const CURRENCY_OVERRIDE_KEY = 'ff_locale_currency'
+const SUPPORTED_LANGS: readonly string[] = ['en', 'ar', 'fr', 'es']
 
 export interface LocaleValue {
   status: 'loading' | 'ready'
@@ -87,6 +90,9 @@ export function GeoLocaleProvider({
   initialLocale?: ServerLocale
 }) {
   const seeded = useRef(initialLocale)
+  const langOverrideRef = useRef<Lang | undefined>(undefined)
+  const currencyOverrideRef = useRef<string | undefined>(undefined)
+
   const [state, setState] = useState<State>({
     status: seeded.current ? 'ready' : 'loading',
     lang: seeded.current?.lang ?? 'ar',
@@ -100,23 +106,42 @@ export function GeoLocaleProvider({
     document.documentElement.setAttribute('dir', dirOf(state.lang))
   }, [state.lang])
 
-  // Apply a stored override and refine the country/currency automatically.
+  // Apply stored overrides and refine the country/currency automatically.
   useEffect(() => {
     let cancelled = false
 
-    let override: Lang | undefined
+    let storedLang: Lang | undefined
+    let storedCurrency: string | undefined
     try {
-      const stored = globalThis.localStorage?.getItem(OVERRIDE_KEY)
-      const supported = ['en', 'ar', 'fr', 'es', 'de', 'it', 'pt', 'pt-BR', 'tr', 'ru', 'zh', 'ja', 'ko', 'hi', 'id']
-      override = supported.includes(stored ?? '') ? stored as Lang : undefined
+      const l = globalThis.localStorage?.getItem(OVERRIDE_KEY)
+      storedLang = l && SUPPORTED_LANGS.includes(l) ? (l as Lang) : undefined
+      const c = globalThis.localStorage?.getItem(CURRENCY_OVERRIDE_KEY)?.toUpperCase()
+      storedCurrency = c && Boolean(CURRENCIES[c]) ? c : undefined
     } catch {
-      override = undefined
+      storedLang = undefined
+      storedCurrency = undefined
     }
-    if (override) setState((s) => ({ ...s, lang: override }))
+
+    if (storedLang) langOverrideRef.current = storedLang
+    if (storedCurrency) currencyOverrideRef.current = storedCurrency
+
+    if (storedLang || storedCurrency) {
+      setState((s) => ({
+        ...s,
+        lang: storedLang ?? s.lang,
+        currency: storedCurrency ?? s.currency,
+      }))
+    }
 
     const setLocale = (lang: Lang, currency: string, countryCode: string) => {
       if (cancelled) return
-      setState((s) => ({ ...s, lang: override ?? lang, currency, countryCode }))
+      setState((s) => ({
+        ...s,
+        status: 'ready',
+        lang: langOverrideRef.current ?? lang,
+        currency: currencyOverrideRef.current ?? currency,
+        countryCode,
+      }))
     }
 
     const browserLang = typeof navigator !== 'undefined' ? navigator.language : undefined
@@ -149,6 +174,7 @@ export function GeoLocaleProvider({
   }, [])
 
   const setLang = useCallback((lang: Lang) => {
+    langOverrideRef.current = lang
     try {
       globalThis.localStorage?.setItem(OVERRIDE_KEY, lang)
       document.cookie = `${OVERRIDE_KEY}=${lang}; path=/; max-age=31536000; samesite=lax`
@@ -159,8 +185,10 @@ export function GeoLocaleProvider({
   }, [])
 
   const setCurrency = useCallback((currency: string) => {
+    currencyOverrideRef.current = currency
     try {
-      globalThis.localStorage?.setItem('ff_locale_currency', currency)
+      globalThis.localStorage?.setItem(CURRENCY_OVERRIDE_KEY, currency)
+      document.cookie = `${CURRENCY_OVERRIDE_KEY}=${currency}; path=/; max-age=31536000; samesite=lax`
     } catch {
       // ignore storage errors
     }

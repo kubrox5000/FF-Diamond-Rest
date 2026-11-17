@@ -15,11 +15,19 @@ export function PaymentClient({ order }: { order: PublicOrder }) {
   const [methods, setMethods] = useState<{ id: string; label: string; network: string; cat: string }[]>(
     PAYMENT_METHODS.map((m) => ({ id: m.id, label: m.label, network: m.network, cat: m.cat })),
   )
-  const [copied, setCopied] = useState<'addr' | 'amt' | null>(null)
+  const [copied, setCopied] = useState<'addr' | 'amt' | 'tok' | null>(null)
   const [txId, setTxId] = useState(order.txId ?? '')
   const [proof, setProof] = useState<string | null>(order.proofUrl ?? null)
   const [proofName, setProofName] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [trackingToken, setTrackingToken] = useState('')
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(`ff_track_${order.orderNumber}`)
+      if (saved) setTrackingToken(saved)
+    } catch {}
+  }, [order.orderNumber])
 
   // Load live payment methods from the DB (falls back to static defaults).
   useEffect(() => {
@@ -50,7 +58,7 @@ export function PaymentClient({ order }: { order: PublicOrder }) {
 
   const alreadySubmitted = order.status === 'payment_review' || order.status === 'paid'
 
-  async function copy(text: string, which: 'addr' | 'amt') {
+  async function copy(text: string, which: 'addr' | 'amt' | 'tok') {
     await navigator.clipboard.writeText(text)
     setCopied(which)
     toast.success(t('pay_copied'))
@@ -112,17 +120,17 @@ export function PaymentClient({ order }: { order: PublicOrder }) {
     }
   }
 
-  const qrValue = order.walletAddress || ''
+  const trackUrl = `/track?order=${encodeURIComponent(order.orderNumber)}${trackingToken ? `&token=${encodeURIComponent(trackingToken)}` : ''}`
 
   if (order.paymentMethod === 'HELEKET') {
-    return <HeleketPanel order={order} expired={expired} mins={mins} secs={secs} />
+    return <HeleketPanel order={order} expired={expired} mins={mins} secs={secs} trackUrl={trackUrl} />
   }
 
   if (order.paymentMethod === 'PLISIO') {
-    return <PlisioPanel order={order} expired={expired} mins={mins} secs={secs} />
+    return <PlisioPanel order={order} expired={expired} mins={mins} secs={secs} trackUrl={trackUrl} />
   }
   if (order.paymentMethod === 'ATLOS') {
-    return <HostedPaymentPanel order={order} expired={expired} mins={mins} secs={secs} />
+    return <HostedPaymentPanel order={order} expired={expired} mins={mins} secs={secs} trackUrl={trackUrl} />
   }
 
   return (
@@ -179,7 +187,7 @@ export function PaymentClient({ order }: { order: PublicOrder }) {
                   <button
                     onClick={() => copy(order.walletAddress ?? '', 'addr')}
                     className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-border hover:bg-secondary"
-                    aria-label={t('pay_track')}
+                    aria-label="Copy wallet address"
                   >
                     {copied === 'addr' ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
                   </button>
@@ -191,12 +199,14 @@ export function PaymentClient({ order }: { order: PublicOrder }) {
                 <div className="flex items-center gap-2">
                   <CryptoIcon id={order.paymentMethod} className="h-8 w-8" />
                   <code className="flex-1 text-base font-bold text-gold" translate="no">
-                    {parseFloat(order.amountUsdt).toFixed(2)} USDT
+                    {order.paymentMethod.startsWith('USDT')
+                      ? `${parseFloat(order.amountUsdt).toFixed(2)} USDT`
+                      : `$${parseFloat(order.amountUsd).toFixed(2)} USD (≈ ${parseFloat(order.amountUsdt).toFixed(2)} USDT)`}
                   </code>
                   <button
                     onClick={() => copy(parseFloat(order.amountUsdt).toFixed(2), 'amt')}
                     className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-border hover:bg-secondary"
-                    aria-label={t('pay_track')}
+                    aria-label="Copy amount"
                   >
                     {copied === 'amt' ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
                   </button>
@@ -257,8 +267,25 @@ export function PaymentClient({ order }: { order: PublicOrder }) {
             </>
           )}
 
+          {trackingToken && (
+            <div className="mt-4 rounded-xl border border-border bg-secondary/40 p-3">
+              <p className="mb-1 text-[11px] font-medium text-muted-foreground">Private Tracking Token</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 truncate font-mono text-xs text-foreground" translate="no">{trackingToken}</code>
+                <button
+                  type="button"
+                  onClick={() => copy(trackingToken, 'tok')}
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border hover:bg-secondary"
+                  aria-label="Copy tracking token"
+                >
+                  {copied === 'tok' ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
+          )}
+
           <button
-            onClick={() => router.push(`/track?q=${order.orderNumber}`)}
+            onClick={() => router.push(trackUrl)}
             className="mt-3 w-full rounded-xl border border-border bg-secondary/50 px-4 py-2.5 text-sm font-semibold hover:bg-secondary"
           >
             {t('pay_track')}
@@ -288,7 +315,7 @@ function Step({ icon, num, text }: { icon: React.ReactNode; num: string; text: s
     </div>
   )
 }
-function HeleketPanel({ order, expired, mins, secs }: { order: PublicOrder; expired: boolean; mins: number; secs: number }) {
+function HeleketPanel({ order, expired, mins, secs, trackUrl }: { order: PublicOrder; expired: boolean; mins: number; secs: number; trackUrl: string }) {
   const router = useRouter()
   const { t } = useLocale()
   const paid = ['paid', 'processing', 'completed'].includes(order.status)
@@ -362,7 +389,7 @@ function HeleketPanel({ order, expired, mins, secs }: { order: PublicOrder; expi
         )}
 
         <button
-          onClick={() => router.push(`/track?q=${order.orderNumber}`)}
+          onClick={() => router.push(trackUrl)}
           className="mt-3 w-full rounded-xl border border-border bg-secondary/50 px-4 py-2.5 text-sm font-semibold hover:bg-secondary"
         >
           {t('pay_track')}
@@ -372,7 +399,8 @@ function HeleketPanel({ order, expired, mins, secs }: { order: PublicOrder; expi
   )
 }
 
-function PlisioPanel({ order, expired, mins, secs }: { order: PublicOrder; expired: boolean; mins: number; secs: number }) {
+function PlisioPanel({ order, expired, mins, secs, trackUrl }: { order: PublicOrder; expired: boolean; mins: number; secs: number; trackUrl: string }) {
+  const router = useRouter()
   const { t } = useLocale()
   const paid = ['paid', 'processing', 'completed'].includes(order.status)
   const disabled = expired || order.status === 'cancelled' || !order.walletAddress
@@ -384,11 +412,17 @@ function PlisioPanel({ order, expired, mins, secs }: { order: PublicOrder; expir
       </div>
       <div className="mt-6 rounded-2xl bg-primary/5 p-5 text-center"><p className="text-sm text-muted-foreground">{t('pay_exact')}</p><p className="mt-2 text-4xl font-semibold" dir="ltr" translate="no">${Number(order.amountUsd).toFixed(2)} USD</p></div>
       {paid ? <p className="mt-5 rounded-xl bg-emerald-500/10 p-4 text-center">{t('pay_heleket_paid')}</p> : <a href={disabled ? undefined : order.walletAddress ?? undefined} target="_blank" rel="noopener noreferrer" aria-disabled={disabled} className="mt-6 flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 aria-disabled:pointer-events-none aria-disabled:opacity-50">{t('pay_atlos_btn')}</a>}
+      <button
+        onClick={() => router.push(trackUrl)}
+        className="mt-3 w-full rounded-xl border border-border bg-secondary/50 px-4 py-2.5 text-sm font-semibold hover:bg-secondary"
+      >
+        {t('pay_track')}
+      </button>
     </div>
   )
 }
 
-function HostedPaymentPanel({ order, expired, mins, secs }: { order: PublicOrder; expired: boolean; mins: number; secs: number }) {
+function HostedPaymentPanel({ order, expired, mins, secs, trackUrl }: { order: PublicOrder; expired: boolean; mins: number; secs: number; trackUrl: string }) {
   const router = useRouter()
   const { t, lang } = useLocale()
   const paid = ['paid', 'processing', 'completed'].includes(order.status)
@@ -531,6 +565,12 @@ function HostedPaymentPanel({ order, expired, mins, secs }: { order: PublicOrder
             </>
           )}
 
+          <button
+            onClick={() => router.push(trackUrl)}
+            className="mt-4 w-full rounded-xl border border-border bg-secondary/50 px-4 py-2.5 text-sm font-semibold hover:bg-secondary"
+          >
+            {t('pay_track')}
+          </button>
         </div>
       </div>
     </div>

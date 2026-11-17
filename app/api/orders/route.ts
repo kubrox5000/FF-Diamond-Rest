@@ -7,9 +7,17 @@ import { discountedCents, generateOrderNumber } from '@/lib/orders'
 import { getOfficialPackage } from '@/lib/package-catalog'
 import { getSettings } from '@/lib/settings'
 import { HELEKET_KEY, isHeleketConfigured, createHeleketInvoice } from '@/lib/heleket'
-import { ATLOS_KEY } from '@/lib/atlos'
+import { ATLOS_KEY, isAtlosConfigured } from '@/lib/atlos'
 import { PLISIO_KEY, createPlisioInvoice, isPlisioConfigured } from '@/lib/plisio'
 import { enforceRateLimit } from '@/lib/distributed-rate-limit'
+import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { createMockOrder } from '@/lib/mock-orders'
+import {
+  findMockCoupon,
+  getMockPackage,
+  incrementMockCouponUsage,
+  listMockPaymentMethods,
+} from '@/lib/mock-admin-store'
 
 const createSchema = z.object({
   packageId: z.number().int().positive(),
@@ -36,19 +44,29 @@ export async function POST(req: NextRequest) {
 
   // ── Fetch package + settings + payment method + coupon in parallel ──────────
   const couponCode = data.couponCode ? data.couponCode.trim().toUpperCase() : null
+  const dbReady = isDatabaseConfigured()
 
   const [pkgRows, settingsData, pmRows, couponRows] = await Promise.all([
-    db.select().from(packages).where(eq(packages.id, data.packageId)).limit(1),
+    dbReady
+      ? db.select().from(packages).where(eq(packages.id, data.packageId)).limit(1)
+      : Promise.resolve([] as typeof packages.$inferSelect[]),
     getSettings(),
-    db.select().from(paymentMethods).where(eq(paymentMethods.key, data.paymentMethod)).limit(1),
-    couponCode
+    dbReady
+      ? db.select().from(paymentMethods).where(eq(paymentMethods.key, data.paymentMethod)).limit(1)
+      : Promise.resolve([] as typeof paymentMethods.$inferSelect[]),
+    couponCode && dbReady
       ? db.select().from(coupons).where(eq(coupons.code, couponCode)).limit(1)
       : Promise.resolve([] as typeof coupons.$inferSelect[]),
   ])
 
   const databasePackage = pkgRows[0]
-  const pkg = getOfficialPackage(data.packageId)
-  if (!pkg || (databasePackage && !databasePackage.active)) {
+  const mockPkg = !dbReady ? getMockPackage(data.packageId) : undefined
+  const officialPkg = getOfficialPackage(data.packageId)
+  const resolvedMockPkg = mockPkg
+    ? { ...mockPkg, priceCents: Math.round(parseFloat(mockPkg.priceUsd) * 100) }
+    : undefined
+  const pkg = officialPkg ?? resolvedMockPkg
+  if (!pkg || (databasePackage && !databasePackage.active) || (mockPkg && !mockPkg.active)) {
     return NextResponse.json({ error: 'Package not found' }, { status: 404 })
   }
 
@@ -56,7 +74,8 @@ export async function POST(req: NextRequest) {
   let amountCents = pkg.priceCents
   let appliedCoupon: string | null = null
 
-  const coupon = couponRows[0]
+  const mockCoupon = !dbReady && couponCode ? findMockCoupon(couponCode) : undefined
+  const coupon = couponRows[0] ?? mockCoupon
   if (couponCode && coupon && coupon.active && (!coupon.maxUses || coupon.usedCount < coupon.maxUses)) {
     const discountedAmountCents = discountedCents(amountCents, coupon.discountPct)
     if (discountedAmountCents === null) {
@@ -65,10 +84,14 @@ export async function POST(req: NextRequest) {
     amountCents = discountedAmountCents
     appliedCoupon = couponCode
     // Fire coupon usage increment without blocking the response
-    void db
-      .update(coupons)
-      .set({ usedCount: sql`${coupons.usedCount} + 1` })
-      .where(eq(coupons.id, coupon.id))
+    if (dbReady) {
+      void db
+        .update(coupons)
+        .set({ usedCount: sql`${coupons.usedCount} + 1` })
+        .where(eq(coupons.id, coupon.id))
+    } else {
+      incrementMockCouponUsage(coupon.id)
+    }
   }
 
   if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
@@ -77,8 +100,15 @@ export async function POST(req: NextRequest) {
 
   const amountUsd = amountCents / 100
   const amountUsdt = amountUsd
-  const allowedMethods = new Set(['ATLOS', 'USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
-  const selectedPaymentMethod = pmRows[0]
+  const allowedMethods = new Set(['USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
+  if (await isAtlosConfigured()) allowedMethods.add(ATLOS_KEY)
+  if (isHeleketConfigured()) allowedMethods.add(HELEKET_KEY)
+  if (isPlisioConfigured()) allowedMethods.add(PLISIO_KEY)
+
+  const mockPm = !dbReady
+    ? listMockPaymentMethods().find((m) => m.key === data.paymentMethod)
+    : undefined
+  const selectedPaymentMethod = pmRows[0] ?? mockPm
   if (!allowedMethods.has(data.paymentMethod) || (selectedPaymentMethod && !selectedPaymentMethod.active)) {
     return NextResponse.json({ error: 'This payment method is not currently available' }, { status: 400 })
   }
@@ -102,7 +132,7 @@ export async function POST(req: NextRequest) {
     REVOLUT:     settingsData.paymentRevolut,
   }
 
-  let walletAddress = pmRows[0]?.walletAddress?.trim() || (WALLETS[data.paymentMethod] ?? '')
+  let walletAddress = (WALLETS[data.paymentMethod]?.trim()) || selectedPaymentMethod?.walletAddress?.trim() || ''
   const orderNumber = generateOrderNumber()
   const trackingToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
 
@@ -151,30 +181,39 @@ export async function POST(req: NextRequest) {
   const giftDiamonds = pkg.bonusDiamonds > 0 ? pkg.bonusDiamonds : pkg.sortOrder * 50
 
   // ── Insert order ──────────────────────────────────────────────────────────
-  const inserted = (
-    await db
-      .insert(orders)
-      .values({
-        orderNumber,
-        trackingToken,
-        packageId:     pkg.id,
-        diamonds:      pkg.diamonds + giftDiamonds,
-        playerUid:     data.playerUid,
-        nickname:      data.nickname || null,
-        server:        data.server,
-        email:         data.email || null,
-        country:       data.country || null,
-        phone:         data.phone || null,
-        amountUsd: amountUsd.toFixed(2),
-        amountUsdt:    amountUsdt.toFixed(2),
-        paymentMethod: data.paymentMethod,
-        walletAddress,
-        txId:          heleketUuid || plisioTxnId,
-        couponCode:    appliedCoupon,
-        status:        'pending_payment',
-      })
-      .returning()
-  )[0]
+  const orderValues = {
+    orderNumber,
+    trackingToken,
+    packageId:     pkg.id,
+    diamonds:      pkg.diamonds + giftDiamonds,
+    playerUid:     data.playerUid,
+    nickname:      data.nickname || null,
+    server:        data.server,
+    email:         data.email || null,
+    country:       data.country || null,
+    phone:         data.phone || null,
+    amountUsd:     amountUsd.toFixed(2),
+    amountUsdt:    amountUsdt.toFixed(2),
+    paymentMethod: data.paymentMethod,
+    walletAddress,
+    txId:          heleketUuid || plisioTxnId,
+    couponCode:    appliedCoupon,
+    status:        'pending_payment',
+    proofUrl:      null,
+    adminNotes:    null,
+  }
+
+  let inserted
+  if (dbReady) {
+    inserted = (
+      await db
+        .insert(orders)
+        .values(orderValues)
+        .returning()
+    )[0]
+  } else {
+    inserted = createMockOrder(orderValues)
+  }
 
   return NextResponse.json({
     order: inserted,

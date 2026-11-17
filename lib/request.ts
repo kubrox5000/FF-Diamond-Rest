@@ -12,7 +12,7 @@ async function request<T>(
   // Do not import database or server-only env modules here. A previous `./env`
   // import eagerly validated DATABASE_URL in the browser and crashed rendering.
   const baseUrl = typeof window === 'undefined'
-    ? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:13000'
+    ? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
     : window.location.origin
 
   const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`

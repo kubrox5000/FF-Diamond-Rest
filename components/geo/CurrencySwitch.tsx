@@ -69,7 +69,7 @@ export function CurrencySwitch({ className }: { className?: string }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 w-56 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-xl divide-y divide-border/40">
+        <div className="absolute end-0 top-full z-50 mt-1.5 w-56 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-xl divide-y divide-border/40">
           {CURRENCIES.map((c) => (
             <button
               key={c.code}
@@ -83,7 +83,7 @@ export function CurrencySwitch({ className }: { className?: string }) {
             >
               <span className="text-base">{c.flag}</span>
               <span className="w-9 shrink-0 font-mono text-xs font-bold">{c.code}</span>
-              <span className="flex-1 text-left text-xs text-muted-foreground">{c.label}</span>
+              <span className="flex-1 text-start text-xs text-muted-foreground">{c.label}</span>
               {currency === c.code && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
             </button>
           ))}

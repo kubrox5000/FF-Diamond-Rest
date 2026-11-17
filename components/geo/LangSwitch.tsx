@@ -11,17 +11,6 @@ const LANGUAGES: { code: Lang; label: string; flag: string }[] = [
   { code: 'en', label: 'English', flag: '🇺🇸' },
   { code: 'fr', label: 'Français', flag: '🇫🇷' },
   { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
-  { code: 'pt', label: 'Português', flag: '🇵🇹' },
-  { code: 'pt-BR', label: 'Português (Brasil)', flag: '🇧🇷' },
-  { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { code: 'zh', label: '中文', flag: '🇨🇳' },
-  { code: 'ja', label: '日本語', flag: '🇯🇵' },
-  { code: 'ko', label: '한국어', flag: '🇰🇷' },
-  { code: 'hi', label: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'id', label: 'Bahasa Indonesia', flag: '🇮🇩' },
 ]
 
 export function LangSwitch({ className }: { className?: string }) {
@@ -57,7 +46,7 @@ export function LangSwitch({ className }: { className?: string }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 w-40 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+        <div className="absolute end-0 top-full z-50 mt-1.5 w-40 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
           {LANGUAGES.map((l) => (
             <button
               key={l.code}
@@ -70,7 +59,7 @@ export function LangSwitch({ className }: { className?: string }) {
               translate="no"
             >
               <span className="text-base">{l.flag}</span>
-              <span className="flex-1 text-left">{l.label}</span>
+              <span className="flex-1 text-start">{l.label}</span>
               {lang === l.code && <Check className="h-3.5 w-3.5 text-primary" />}
             </button>
           ))}

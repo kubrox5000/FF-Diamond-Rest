@@ -5,6 +5,8 @@ import { packages } from '@/db/schemas'
 import { eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import { getAdminSession } from '@/lib/admin-session'
+import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { deleteMockPackage, updateMockPackage } from '@/lib/mock-admin-store'
 
 const schema = z.object({
   diamonds: z.number().int().positive().optional(),
@@ -39,6 +41,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (d.active !== undefined) update.active = d.active
   if (d.sortOrder !== undefined) update.sortOrder = d.sortOrder
 
+  if (!isDatabaseConfigured()) {
+    const updated = updateMockPackage(Number(id), update)
+    if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ package: updated })
+  }
+
   const updated = (
     await db.update(packages).set(update).where(eq(packages.id, Number(id))).returning()
   )[0]
@@ -50,6 +58,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await getAdminSession())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
+  if (!isDatabaseConfigured()) {
+    const ok = deleteMockPackage(Number(id))
+    if (!ok) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ ok: true })
+  }
   await db.delete(packages).where(eq(packages.id, Number(id)))
   revalidateTag('home', 'seconds')
   return NextResponse.json({ ok: true })

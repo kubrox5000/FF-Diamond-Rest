@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { Phone, Mail, MapPin, Clock, Instagram, Facebook, Twitter, Youtube, Music2, Send, Lock, ChevronRight } from 'lucide-react'
 import type { SiteSettings } from '@/lib/settings'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
@@ -17,6 +18,10 @@ const payments = [
 
 export function SiteFooter({ settings }: { settings: SiteSettings }) {
   const { t } = useLocale()
+  const [year, setYear] = useState(2026)
+  useEffect(() => {
+    setYear(new Date().getFullYear())
+  }, [])
   const tg = settings.telegram ? `https://t.me/${settings.telegram}` : undefined
 
   const quickLinks = [
@@ -37,7 +42,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
   ]
 
   return (
-    <footer id="contact" suppressHydrationWarning className="relative mt-24 border-t border-border/60 bg-background/70">
+    <footer id="contact" className="relative mt-24 border-t border-border/60 bg-background/70">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <div className="grid gap-10 md:grid-cols-3">
@@ -111,7 +116,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
           {/* Important links */}
           <div className="md:justify-self-end">
             <h4 className="text-sm font-semibold text-foreground">{t('foot_links')}</h4>
-            <ul suppressHydrationWarning className="mt-4 space-y-2.5 text-sm text-muted-foreground">
+            <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
               {quickLinks.map((l) => (
                 <li key={l.href}>
                   <Link href={l.href} className="group inline-flex items-center gap-1.5 hover:text-foreground">
@@ -139,7 +144,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
           </div>
 
           <p className="order-2 text-xs text-muted-foreground sm:order-3">
-            {t('foot_rights', { year: new Date().getFullYear() })}
+            {t('foot_rights', { year })}
           </p>
         </div>
       </div>

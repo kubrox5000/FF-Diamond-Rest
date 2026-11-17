@@ -24,7 +24,7 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
 }) {
   const router = useRouter()
   const params = useSearchParams()
-  const { t, countryCode, lang } = useLocale()
+  const { t, countryCode, lang, currency, formatPrice } = useLocale()
   const preselect = params.get('package')
 
   const [selected, setSelected] = useState<PublicPackage | null>(
@@ -175,6 +175,11 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to create order')
+      if (data.trackingToken && data.order?.orderNumber) {
+        try {
+          sessionStorage.setItem(`ff_track_${data.order.orderNumber}`, data.trackingToken)
+        } catch {}
+      }
       toast.success(t('order_created'))
       if (data.paymentUrl) {
         window.location.href = data.paymentUrl
@@ -468,8 +473,11 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
                 {couponPct > 0 && <Row label={t('coupon_discount')} value={`-${couponPct}%`} accent="text-emerald-400" />}
                 <div className="flex items-center justify-between pt-2">
                   <span className="font-semibold">{t('total')}</span>
-                  <div className="text-right">
+                  <div className="text-end">
                     <p className="text-xl font-extrabold text-gold" translate="no">{formatUsd(price.usd)}</p>
+                    {currency !== 'USD' && (
+                      <p className="text-xs font-semibold text-foreground/80" translate="no">≈ {formatPrice(price.usd)}</p>
+                    )}
                     <p className="text-xs text-muted-foreground" translate="no">{price.usdt.toFixed(2)} USDT</p>
                   </div>
                 </div>
@@ -479,7 +487,7 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
                 type="button"
                 onClick={() => {
                   setMethod('')
-                  setOpenGroups({ crypto: false, wallet: false })
+                  setOpenGroups({ crypto: false, plisio: false, atlos: false, wallet: false })
                   const el = document.getElementById('payment-methods')
                   if (!el) return
                   const y = el.getBoundingClientRect().top + window.scrollY - 96

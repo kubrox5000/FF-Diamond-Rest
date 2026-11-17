@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2, Save, Rocket, Phone, Share2, LifeBuoy, Coins, UserRound, KeyRound, Target, CreditCard, Copy, Send } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { adminFetch } from '@/lib/admin-fetch'
 import type { SiteSettings } from '@/lib/settings'
 
 type Draft = Partial<Record<keyof SiteSettings, string | boolean>>
@@ -22,20 +23,30 @@ export function SettingsClient() {
   const [newPass, setNewPass] = useState('')
   const [confirmPass, setConfirmPass] = useState('')
   const [accSaving, setAccSaving] = useState(false)
+  const [origin, setOrigin] = useState('')
 
   useEffect(() => {
-    fetch('/api/admin/plisio')
-      .then((r) => r.json())
-      .then((d) => setPlisioStatus({ configured: Boolean(d.configured), masked: d.masked ?? '' }))
+    setOrigin(window.location.origin)
+    adminFetch('/api/admin/plisio')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setPlisioStatus({ configured: Boolean(d.configured), masked: d.masked ?? '' })
+      })
       .catch(() => {})
 
-    fetch('/api/admin/account')
-      .then((r) => r.json())
-      .then((d) => { if (d.username) setUsername(d.username) })
+    adminFetch('/api/admin/account')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.username) setUsername(d.username) })
       .catch(() => {})
 
-    fetch('/api/admin/settings')
-      .then((r) => r.json())
+    adminFetch('/api/admin/settings')
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}))
+        if (!r.ok || !data?.settings) {
+          throw new Error(data?.error || 'Failed to load settings')
+        }
+        return data
+      })
       .then((data) => {
         const s: SiteSettings = data.settings
         setDraft({
@@ -60,7 +71,7 @@ export function SettingsClient() {
           atlosApiSecret: s.atlosApiSecret ?? '',
         })
       })
-      .catch(() => toast.error('Failed to load settings'))
+      .catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to load settings'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -70,7 +81,7 @@ export function SettingsClient() {
     if (!plisioKey.trim()) return toast.error('Enter the Plisio API key')
     setPlisioSaving(true)
     try {
-      const res = await fetch('/api/admin/plisio', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: plisioKey }) })
+      const res = await adminFetch('/api/admin/plisio', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: plisioKey }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not save Plisio API key')
       setPlisioStatus({ configured: true, masked: data.masked })
@@ -86,7 +97,7 @@ export function SettingsClient() {
     if (!username.trim()) return toast.error('Username cannot be empty')
     setAccSaving(true)
     try {
-      const res = await fetch('/api/admin/account', {
+      const res = await adminFetch('/api/admin/account', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -95,8 +106,11 @@ export function SettingsClient() {
           ...(newPass ? { newPassword: newPass } : {}),
         }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Update failed')
+      if (data.token && typeof window !== 'undefined') {
+        localStorage.setItem('admin_token', data.token)
+      }
       toast.success('Account updated')
       setCurPass(''); setNewPass(''); setConfirmPass('')
     } catch (e) {
@@ -109,12 +123,12 @@ export function SettingsClient() {
   async function save() {
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/settings', {
+      const res = await adminFetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(draft),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Save failed')
       toast.success('Settings saved')
     } catch (e) {
@@ -285,13 +299,13 @@ export function SettingsClient() {
             <div>
               <p className="text-xs font-semibold text-white">رابط الويب هوك الخاص بك (Webhook URL):</p>
               <code className="text-xs text-emerald-400 select-all">
-                {typeof window !== 'undefined' ? `${window.location.origin}/api/atlos/webhook` : '/api/atlos/webhook'}
+                {origin ? `${origin}/api/atlos/webhook` : '/api/atlos/webhook'}
               </code>
             </div>
             <button
               type="button"
               onClick={() => {
-                const url = typeof window !== 'undefined' ? `${window.location.origin}/api/atlos/webhook` : '/api/atlos/webhook'
+                const url = origin ? `${origin}/api/atlos/webhook` : '/api/atlos/webhook'
                 navigator.clipboard.writeText(url)
                 toast.success('تم نسخ رابط الـ Webhook بنجاح')
               }}

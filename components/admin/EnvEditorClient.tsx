@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import {
   Save, RefreshCw, CheckCircle, AlertCircle, Loader2,
   ChevronRight, ChevronDown, Info, FolderOpen, Folder,
 } from 'lucide-react'
+import { adminFetch } from '@/lib/admin-fetch'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -99,9 +101,15 @@ export function EnvEditorClient() {
   async function loadFiles() {
     setLoadingFiles(true)
     try {
-      const res = await fetch('/api/admin/file-list')
-      const data = await res.json() as { files: FileEntry[] }
+      const res = await adminFetch('/api/admin/file-list')
+      const data = await res.json().catch(() => ({})) as { files?: FileEntry[]; error?: string }
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to load files')
+        return
+      }
       setFiles(data.files ?? [])
+    } catch {
+      toast.error('Failed to load files')
     } finally {
       setLoadingFiles(false)
     }
@@ -110,12 +118,18 @@ export function EnvEditorClient() {
   async function loadEnv() {
     setLoadingEnv(true)
     try {
-      const res = await fetch('/api/admin/env-file')
-      const data = await res.json() as { content: string; size: number; mtime: string | null }
-      setContent(data.content)
-      setOriginalContent(data.content)
-      setFileSize(data.size)
+      const res = await adminFetch('/api/admin/env-file')
+      const data = await res.json().catch(() => ({})) as { content?: string; size?: number; mtime?: string | null; error?: string }
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to load .env file')
+        return
+      }
+      setContent(data.content ?? '')
+      setOriginalContent(data.content ?? '')
+      setFileSize(data.size ?? 0)
       if (data.mtime) setMtime(new Date(data.mtime).toLocaleString('ar-SA'))
+    } catch {
+      toast.error('Failed to load .env file')
     } finally {
       setLoadingEnv(false)
     }
@@ -124,22 +138,23 @@ export function EnvEditorClient() {
   async function saveEnv() {
     setSaveStatus('saving')
     try {
-      const res = await fetch('/api/admin/env-file', {
+      const res = await adminFetch('/api/admin/env-file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
       })
-      const data = await res.json() as { ok?: boolean; error?: string; size?: number }
-      if (data.ok) {
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; size?: number }
+      if (res.ok && data.ok) {
         setOriginalContent(content)
         setFileSize(data.size ?? fileSize)
         setSaveStatus('saved')
         setEditMode(false)
         setMtime(new Date().toLocaleString('ar-SA'))
-        loadFiles()
+        void loadFiles()
         setTimeout(() => setSaveStatus('idle'), 3000)
       } else {
         setSaveStatus('error')
+        toast.error(data.error || 'Save failed')
         setTimeout(() => setSaveStatus('idle'), 3000)
       }
     } catch {

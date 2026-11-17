@@ -3,7 +3,7 @@ import { resolveServerLocale } from './locale-server'
 import { t, type TKey } from './i18n'
 import type { Lang } from './currencies'
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://diamondboost.gg'
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ff-diamond.rest'
 
 /**
  * Page title keys used to localize the browser tab / metadata <title>.

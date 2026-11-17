@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { Database, CheckCircle, XCircle, Loader2, AlertTriangle, Eye, EyeOff, RefreshCw, Zap, TableProperties } from 'lucide-react'
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
+import { adminFetch } from '@/lib/admin-fetch'
 
 type Status = 'idle' | 'testing' | 'connecting' | 'migrating' | 'seeding' | 'success' | 'error'
 
@@ -14,11 +16,13 @@ export function DatabaseClient() {
   const [testResult, setTestResult] = useState<null | { ok: boolean; tables?: string[] }>(null)
   const [configured, setConfigured] = useState(false)
   const [currentDbMasked, setCurrentDbMasked] = useState('')
+  const [seedConfirmOpen, setSeedConfirmOpen] = useState(false)
 
   useEffect(() => {
-    fetch('/api/admin/database-setup')
-      .then((r) => r.json())
-      .then((d: { configured: boolean; masked: string }) => {
+    adminFetch('/api/admin/database-setup')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { configured?: boolean; masked?: string } | null) => {
+        if (!d) return
         setConfigured(Boolean(d.configured))
         if (d.masked) setCurrentDbMasked(d.masked)
       })
@@ -31,13 +35,13 @@ export function DatabaseClient() {
     setMessage('')
     setTestResult(null)
     try {
-      const res = await fetch('/api/admin/database-connect', {
+      const res = await adminFetch('/api/admin/database-connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url.trim(), action: 'test' }),
       })
-      const data = await res.json() as { ok: boolean; tables?: string[]; error?: string }
-      if (data.ok) {
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; tables?: string[]; error?: string }
+      if (res.ok && data.ok) {
         setTestResult({ ok: true, tables: data.tables })
         setTables(data.tables ?? [])
         setStatus('idle')
@@ -58,13 +62,13 @@ export function DatabaseClient() {
     setStatus('connecting')
     setMessage('')
     try {
-      const res = await fetch('/api/admin/database-connect', {
+      const res = await adminFetch('/api/admin/database-connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url.trim(), action: 'connect' }),
       })
-      const data = await res.json() as { ok: boolean; message?: string; error?: string; tables?: string[] }
-      if (data.ok) {
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; message?: string; error?: string; tables?: string[] }
+      if (res.ok && data.ok) {
         setStatus('success')
         setMessage(data.message ?? 'Connected successfully!')
         setTables(data.tables ?? [])
@@ -94,7 +98,7 @@ export function DatabaseClient() {
       const body = url.trim()
         ? JSON.stringify({ url: url.trim(), action: 'migrate' })
         : undefined
-      const res = await fetch(
+      const res = await adminFetch(
         url.trim() ? '/api/admin/database-connect' : '/api/admin/database-migrate',
         {
           method: 'POST',
@@ -102,8 +106,8 @@ export function DatabaseClient() {
           ...(body ? { body } : {}),
         },
       )
-      const data = await res.json() as { ok: boolean; message?: string; error?: string }
-      if (data.ok) {
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; message?: string; error?: string }
+      if (res.ok && data.ok) {
         setStatus('success')
         setMessage(data.message ?? '✅ All database tables created successfully!')
       } else {
@@ -116,14 +120,13 @@ export function DatabaseClient() {
     }
   }
 
-  async function handleSeed() {
-    if (!confirm('This will overwrite ALL current data (packages, settings, coupons, admin). Continue?')) return
+  async function executeSeed() {
     setStatus('seeding')
     setMessage('')
     try {
-      const res = await fetch('/api/admin/database-seed', { method: 'POST' })
-      const data = await res.json() as { ok: boolean; message?: string; error?: string }
-      if (data.ok) {
+      const res = await adminFetch('/api/admin/database-seed', { method: 'POST' })
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; message?: string; error?: string }
+      if (res.ok && data.ok) {
         setStatus('success')
         setMessage(data.message ?? 'Seeded successfully!')
       } else {
@@ -305,7 +308,7 @@ export function DatabaseClient() {
           Overwrites all current data with the original 24 packages, 2 coupons, and default settings.
         </p>
         <button
-          onClick={handleSeed}
+          onClick={() => setSeedConfirmOpen(true)}
           disabled={busy}
           className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm font-medium text-amber-300 transition-colors hover:bg-amber-500/20 disabled:opacity-50"
         >
@@ -325,6 +328,18 @@ export function DatabaseClient() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={seedConfirmOpen}
+        onOpenChange={setSeedConfirmOpen}
+        title="Reset With Default Data"
+        description="This will overwrite ALL current data (packages, settings, coupons, admin). Continue?"
+        confirmLabel="Seed Default Data"
+        onConfirm={async () => {
+          setSeedConfirmOpen(false)
+          await executeSeed()
+        }}
+      />
     </div>
   )
 }

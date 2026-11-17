@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { AdminShell } from '@/components/admin/AdminShell'
+import { adminFetch } from '@/lib/admin-fetch'
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -11,22 +12,28 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
-    const headers: Record<string, string> = {}
-    if (storedToken) headers['x-admin-token'] = storedToken
-
-    fetch('/api/admin/me', { headers })
-      .then(r => r.json())
-      .then((d: { username?: string; error?: string }) => {
+    let active = true
+    adminFetch('/api/admin/me')
+      .then((r) => {
+        if (!r.ok) throw new Error('Unauthorized')
+        return r.json()
+      })
+      .then((d: { username?: string }) => {
+        if (!active) return
         if (d.username) {
           setUsername(d.username)
         } else {
           router.replace('/admin')
         }
       })
-      .catch(() => router.replace('/admin'))
-      .finally(() => setChecking(false))
-  }, [pathname])
+      .catch(() => {
+        if (active) router.replace('/admin')
+      })
+      .finally(() => {
+        if (active) setChecking(false)
+      })
+    return () => { active = false }
+  }, [pathname, router])
 
   if (checking) {
     return (

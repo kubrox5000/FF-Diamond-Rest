@@ -94,16 +94,20 @@ export function SiteNav() {
 
       <div
         className={cn(
-          'grid overflow-hidden transition-all duration-200 ease-out lg:hidden',
-          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+          'grid transition-all duration-200 ease-out lg:hidden',
+          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none',
         )}
         aria-hidden={!open}
       >
-        <div className="min-h-0 overflow-hidden border-t border-border/60 bg-background/95">
+        <div className="min-h-0 border-t border-border/60 bg-background/95">
           <div className="flex flex-col gap-1 px-4 py-3">
             {links.map((l) => (
               <MobileLink key={l.href} href={l.href} label={l.label} icon={l.icon} onNavigate={() => setOpen(false)} />
             ))}
+          </div>
+          <div className="flex items-center gap-2 border-t border-border/50 px-4 py-3">
+            <CurrencySwitch />
+            <LangSwitch />
           </div>
         </div>
       </div>

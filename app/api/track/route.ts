@@ -3,6 +3,9 @@ import { db } from '@/db'
 import { orders } from '@/db/schemas'
 import { and, eq } from 'drizzle-orm'
 import { enforceRateLimit } from '@/lib/distributed-rate-limit'
+import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { getMockOrder } from '@/lib/mock-orders'
+import { hasValidTrackingToken } from '@/lib/order-access'
 
 // Track by order number OR player UID
 export async function GET(req: NextRequest) {
@@ -13,6 +16,28 @@ export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')?.trim()
   if (!orderNumber || !token || !/^[A-Za-z0-9]{32,80}$/.test(token)) {
     return NextResponse.json({ error: 'Order number and private tracking token are required' }, { status: 400 })
+  }
+
+  if (!isDatabaseConfigured()) {
+    const order = getMockOrder(orderNumber)
+    if (!order || !hasValidTrackingToken(order.trackingToken, token)) {
+      return NextResponse.json({ orders: [] })
+    }
+    return NextResponse.json({
+      orders: [{
+        id: order.id,
+        orderNumber: order.orderNumber,
+        packageId: order.packageId,
+        diamonds: order.diamonds,
+        server: order.server,
+        amountUsd: order.amountUsd,
+        paymentMethod: order.paymentMethod,
+        status: order.status,
+        adminNotes: order.adminNotes,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+      }],
+    })
   }
 
   const rows = await db

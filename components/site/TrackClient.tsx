@@ -14,19 +14,41 @@ import type { PublicOrder } from '@/lib/types'
 
 const TIMELINE: OrderStatus[] = ['pending_payment', 'payment_review', 'paid', 'processing', 'completed']
 
+function readStoredToken(orderNumber: string): string {
+  if (!orderNumber.trim() || typeof window === 'undefined') return ''
+  try {
+    return sessionStorage.getItem(`ff_track_${orderNumber.trim()}`) ?? ''
+  } catch {
+    return ''
+  }
+}
+
 export function TrackClient() {
   const params = useSearchParams()
-  const { t } = useLocale()
+  const { t, lang } = useLocale()
   const [query, setQuery] = useState(params.get('order') ?? '')
   const [token, setToken] = useState(params.get('token') ?? '')
   const [loading, setLoading] = useState(false)
   const [orders, setOrders] = useState<PublicOrder[] | null>(null)
 
   const search = useCallback(async (order: string, privateToken: string) => {
-    if (!order.trim() || !privateToken.trim()) return
+    const trimmedOrder = order.trim()
+    const resolvedToken = privateToken.trim() || readStoredToken(trimmedOrder)
+    if (!trimmedOrder || !resolvedToken) {
+      const msg =
+        lang === 'ar'
+          ? 'يرجى إدخال رقم الطلب ورمز التتبع الخاص'
+          : lang === 'fr'
+            ? 'Veuillez saisir le numéro de commande et le jeton privé'
+            : lang === 'es'
+              ? 'Ingresa el número de pedido y el token de seguimiento privado'
+              : 'Please enter both the order number and private tracking token'
+      toast.error(msg)
+      return
+    }
     setLoading(true)
     try {
-      const res = await fetch(`/api/track?order=${encodeURIComponent(order.trim())}&token=${encodeURIComponent(privateToken.trim())}`)
+      const res = await fetch(`/api/track?order=${encodeURIComponent(trimmedOrder)}&token=${encodeURIComponent(resolvedToken)}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t('tr_failed'))
       setOrders(data.orders)
@@ -37,12 +59,15 @@ export function TrackClient() {
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [t, lang])
 
   useEffect(() => {
-    const order = params.get('order')
-    const privateToken = params.get('token')
-    if (order && privateToken) search(order, privateToken)
+    const order = (params.get('order') ?? '').trim()
+    const urlToken = (params.get('token') ?? '').trim()
+    const effectiveToken = urlToken || (order ? readStoredToken(order) : '')
+    if (order) setQuery(order)
+    if (effectiveToken) setToken(effectiveToken)
+    if (order && effectiveToken) search(order, effectiveToken)
   }, [params, search])
 
   return (
@@ -50,13 +75,20 @@ export function TrackClient() {
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          search(query, token)
+          const resolved = token.trim() || readStoredToken(query)
+          if (!token.trim() && resolved) setToken(resolved)
+          search(query, resolved)
         }}
-        className="glass mx-auto flex max-w-xl gap-2 rounded-2xl border border-border p-2"
+        className="glass mx-auto flex max-w-xl flex-col gap-2 rounded-2xl border border-border p-2 sm:flex-row"
       >
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value
+            setQuery(val)
+            const stored = readStoredToken(val)
+            if (stored && !token.trim()) setToken(stored)
+          }}
           placeholder="Order number"
           aria-label="Order number"
           translate="no"
@@ -73,7 +105,7 @@ export function TrackClient() {
         <button
           type="submit"
           disabled={loading}
-          className="btn-shimmer flex items-center gap-2 rounded-xl px-5 text-sm font-semibold text-white disabled:opacity-60"
+          className="btn-shimmer flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white disabled:opacity-60"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           {t('tr_btn')}
@@ -119,7 +151,9 @@ function OrderCard({ order }: { order: PublicOrder }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-lg font-bold" translate="no">{order.orderNumber}</p>
-          <p className="text-xs text-muted-foreground" translate="no">UID {order.playerUid} · {order.server}</p>
+          <p className="text-xs text-muted-foreground" translate="no">
+            {order.playerUid ? `UID ${order.playerUid} · ${order.server}` : order.server}
+          </p>
         </div>
         <span className={cn('rounded-full border px-3 py-1 text-xs font-semibold', meta.color)}>
           {statusText[status]}
@@ -129,7 +163,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
       <div className="mt-4 flex items-center gap-3 rounded-xl bg-secondary/40 p-3" translate="no">
         <Gem className="h-5 w-5 text-sky-300" />
         <span className="font-bold">{formatNumber(order.diamonds)} 💎</span>
-        <span className="ml-auto font-bold text-gold">{formatUsd(parseFloat(order.amountUsd))}</span>
+        <span className="ms-auto font-bold text-gold">{formatUsd(parseFloat(order.amountUsd))}</span>
       </div>
 
       {!cancelled ? (
@@ -137,7 +171,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
           <div className="relative flex justify-between">
             <div className="absolute left-0 right-0 top-3 h-0.5 bg-border" />
             <div
-              className="absolute left-0 top-3 h-0.5 bg-gradient-to-r from-primary to-accent transition-all"
+              className="absolute start-0 top-3 h-0.5 bg-gradient-to-r from-primary to-accent transition-all"
               style={{ width: `${((meta.step - 1) / (TIMELINE.length - 1)) * 100}%` }}
             />
             {TIMELINE.map((s, i) => {

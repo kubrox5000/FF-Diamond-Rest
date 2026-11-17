@@ -4,6 +4,8 @@ import { db } from '@/db'
 import { orders } from '@/db/schemas'
 import { eq } from 'drizzle-orm'
 import { enforceRateLimit } from '@/lib/distributed-rate-limit'
+import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { getMockOrder, updateMockOrder } from '@/lib/mock-orders'
 
 const schema = z.object({
   txId: z.string().min(4).max(120),
@@ -27,24 +29,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ord
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 })
   }
 
-  const order = (await db.select().from(orders).where(eq(orders.orderNumber, orderNumber)).limit(1))[0]
+  const order = isDatabaseConfigured()
+    ? (await db.select().from(orders).where(eq(orders.orderNumber, orderNumber)).limit(1))[0]
+    : getMockOrder(orderNumber)
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   if (order.status !== 'pending_payment' && order.status !== 'payment_review') {
     return NextResponse.json({ error: 'Order can no longer be updated' }, { status: 409 })
   }
 
-  const updated = (
-    await db
-      .update(orders)
-      .set({
+  const updated = isDatabaseConfigured()
+    ? (
+        await db
+          .update(orders)
+          .set({
+            txId: parsed.data.txId,
+            proofUrl: parsed.data.proofUrl || null,
+            status: 'payment_review',
+            updatedAt: new Date(),
+          })
+          .where(eq(orders.orderNumber, orderNumber))
+          .returning()
+      )[0]
+    : updateMockOrder(orderNumber, {
         txId: parsed.data.txId,
         proofUrl: parsed.data.proofUrl || null,
         status: 'payment_review',
-        updatedAt: new Date(),
       })
-      .where(eq(orders.orderNumber, orderNumber))
-      .returning()
-  )[0]
 
   return NextResponse.json({ order: updated })
 }

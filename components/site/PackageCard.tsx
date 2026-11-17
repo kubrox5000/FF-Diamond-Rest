@@ -27,7 +27,7 @@ interface Props {
 }
 
 function PackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
-  const { t } = useLocale()
+  const { t, currency, formatPrice } = useLocale()
   const finalUsd = discountedPrice(pkg.priceUsd, pkg.discountPct)
   const hasDiscount = pkg.discountPct > 0
   const xMultiplier = X4_DIAMONDS.includes(pkg.diamonds) ? 4 : X3_DIAMONDS.includes(pkg.diamonds) ? 3 : X2_DIAMONDS.includes(pkg.diamonds) ? 2 : 0
@@ -35,24 +35,21 @@ function PackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
   const baseTotal = pkg.diamonds + giftDiamonds
   const total = xMultiplier > 0 ? baseTotal * xMultiplier : baseTotal
 
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect?.(pkg)}
-      suppressHydrationWarning
-      className={cn(
-        'group relative flex w-full flex-col overflow-hidden rounded-2xl border p-4 sm:p-5 text-left transition-all duration-150',
-        'hover:-translate-y-1 active:scale-[0.98]',
-        'bg-card/90',
-        selected
-          ? 'border-primary glow-primary'
-          : 'border-border hover:border-primary/60',
-      )}
-    >
+  const cardClassName = cn(
+    'group relative flex w-full flex-col overflow-hidden rounded-2xl border p-4 sm:p-5 text-start transition-all duration-150',
+    'hover:-translate-y-1 active:scale-[0.98]',
+    'bg-card/90',
+    selected
+      ? 'border-primary glow-primary'
+      : 'border-border hover:border-primary/60',
+  )
+
+  const content = (
+    <>
       {(pkg.popular || pkg.flashSale) && (
         <span
           className={cn(
-            'absolute right-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide',
+            'absolute end-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide',
             pkg.flashSale
               ? 'bg-gold text-gold-foreground'
               : 'bg-gradient-to-r from-amber-400 to-orange-500 text-black shadow-lg shadow-orange-500/30',
@@ -81,13 +78,18 @@ function PackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
         </div>
       </div>
 
-      <div className="mb-1 flex items-baseline gap-2" translate="no">
+      <div className="mb-1 flex flex-wrap items-baseline gap-2" translate="no">
         <span className="text-2xl font-extrabold text-gold">
           {formatUsd(finalUsd)}
         </span>
         {hasDiscount && (
           <span className="text-sm text-muted-foreground line-through">
             {formatUsd(Number(pkg.priceUsd))}
+          </span>
+        )}
+        {currency !== 'USD' && (
+          <span className="text-xs font-semibold text-muted-foreground">
+            ({formatPrice(finalUsd)})
           </span>
         )}
       </div>
@@ -136,8 +138,18 @@ function PackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
       >
         {selected ? t('pkg_selected') : (ctaLabel ?? t('pkg_topup'))}
       </span>
-    </button>
+    </>
   )
+
+  if (onSelect) {
+    return (
+      <button type="button" onClick={() => onSelect(pkg)} className={cardClassName}>
+        {content}
+      </button>
+    )
+  }
+
+  return <div className={cardClassName}>{content}</div>
 }
 
 export const PackageCard = memo(PackageCardBase)

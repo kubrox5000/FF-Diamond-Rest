@@ -9,13 +9,12 @@ import { TopUpForm } from '@/components/site/TopUpForm'
 import { PageHeader } from '@/components/geo/PageHeader'
 import { LocalizedTitle } from '@/components/geo/LocalizedTitle'
 import { getSettings } from '@/lib/settings'
-import { SEED_PAYMENT_METHODS } from '@/lib/seed-data'
-import { OFFICIAL_PACKAGE_CATALOG } from '@/lib/package-catalog'
+import { listMockPackages, listMockPaymentMethods } from '@/lib/mock-admin-store'
 import type { PublicPackage, PublicPaymentMethod } from '@/lib/types'
 import { localizedPageMetadata } from '@/lib/seo'
-import { withHeleket } from '@/lib/heleket'
-import { withAtlos } from '@/lib/atlos'
-import { withPlisio } from '@/lib/plisio'
+import { withHeleket, HELEKET_KEY } from '@/lib/heleket'
+import { withAtlos, ATLOS_KEY } from '@/lib/atlos'
+import { withPlisio, PLISIO_KEY } from '@/lib/plisio'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
 
 export const dynamic = 'force-dynamic'
@@ -25,8 +24,8 @@ export async function generateMetadata() {
 }
 
 export default async function TopUpPage() {
-  const pkgRows: PublicPackage[] = OFFICIAL_PACKAGE_CATALOG
-  let methods: PublicPaymentMethod[] = SEED_PAYMENT_METHODS
+  const pkgRows: PublicPackage[] = listMockPackages().filter((p) => p.active)
+  let methods: PublicPaymentMethod[] = listMockPaymentMethods().filter((m) => m.active)
   const settings = await getSettings()
 
   if (isDatabaseConfigured()) {
@@ -42,8 +41,8 @@ export default async function TopUpPage() {
     }
   }
 
-  const allowedMethods = new Set(['ATLOS', 'USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
-  methods = methods.filter((method) => allowedMethods.has(method.key))
+  const allowedMethods = new Set([ATLOS_KEY, HELEKET_KEY, PLISIO_KEY, 'USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
+  methods = withPlisio(await withAtlos(withHeleket(methods))).filter((method) => allowedMethods.has(method.key))
 
   return (
     <>
@@ -53,7 +52,7 @@ export default async function TopUpPage() {
         <PageHeader kicker="top_kicker" title="top_title" sub="top_sub" />
 
           <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-secondary/40" />}>
-          <TopUpForm packages={pkgRows} paymentMethods={withPlisio(await withAtlos(withHeleket(methods)))} freeGift={settings.freeGift} />
+          <TopUpForm packages={pkgRows} paymentMethods={methods} freeGift={settings.freeGift} />
         </Suspense>
       </main>
       <SiteFooter settings={settings} />

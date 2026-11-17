@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, X, Wallet, Gem, Power, PowerOff, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Wallet, Gem, Power, PowerOff } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
 import { CryptoIcon } from '@/components/site/CryptoIcon'
+import { adminFetch } from '@/lib/admin-fetch'
 import { cn } from '@/utils/cn'
 import type { PublicPaymentMethod } from '@/lib/types'
 
@@ -33,18 +35,28 @@ const EMPTY: Draft = {
 export function PaymentMethodsClient() {
   const [methods, setMethods] = useState<PublicPaymentMethod[] | null>(null)
   const [editing, setEditing] = useState<{ id: number | null; draft: Draft } | null>(null)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
 
   async function load() {
-    const res = await fetch('/api/admin/payment-methods')
-    const data = await res.json()
-    setMethods(data.methods ?? [])
+    try {
+      const res = await adminFetch('/api/admin/payment-methods')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to load payment methods')
+        setMethods([])
+        return
+      }
+      setMethods(data.methods ?? [])
+    } catch {
+      toast.error('Failed to load payment methods')
+      setMethods([])
+    }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { void load() }, [])
 
-  async function remove(id: number) {
-    if (!confirm('Delete this payment method?')) return
-    const res = await fetch(`/api/admin/payment-methods/${id}`, { method: 'DELETE' })
+  async function executeRemove(id: number) {
+    const res = await adminFetch(`/api/admin/payment-methods/${id}`, { method: 'DELETE' })
     if (!res.ok) return toast.error('Delete failed')
     toast.success('Payment method deleted')
     setMethods((p) => p?.filter((x) => x.id !== id) ?? null)
@@ -54,27 +66,27 @@ export function PaymentMethodsClient() {
     if (!editing) return
     const { id, draft } = editing
     if (!draft.key.trim() || !draft.label.trim()) return toast.error('Key and label are required')
-    const res = await fetch(id ? `/api/admin/payment-methods/${id}` : '/api/admin/payment-methods', {
+    const res = await adminFetch(id ? `/api/admin/payment-methods/${id}` : '/api/admin/payment-methods', {
       method: id ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(draft),
     })
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
     if (!res.ok) return toast.error(data.error || 'Save failed')
     toast.success(id ? 'Payment method updated' : 'Payment method created')
     setEditing(null)
-    load()
+    void load()
   }
 
   async function toggleActive(m: PublicPaymentMethod) {
-    const res = await fetch(`/api/admin/payment-methods/${m.id}`, {
+    const res = await adminFetch(`/api/admin/payment-methods/${m.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !m.active }),
     })
     if (!res.ok) return toast.error('Update failed')
     toast.success(m.active ? 'Payment method disabled' : 'Payment method enabled')
-    load()
+    void load()
   }
 
   const crypto = methods?.filter((m) => m.cat === 'crypto') ?? []
@@ -101,8 +113,8 @@ export function PaymentMethodsClient() {
         </div>
       ) : (
         <>
-          <MethodGroup icon={<Gem className="h-4 w-4 text-sky-300" />} title="Crypto" methods={crypto} onEdit={(m) => setEditing({ id: m.id, draft: toDraft(m) })} onDelete={remove} onToggle={toggleActive} />
-          <MethodGroup icon={<Wallet className="h-4 w-4 text-primary" />} title="Wallets" methods={wallet} onEdit={(m) => setEditing({ id: m.id, draft: toDraft(m) })} onDelete={remove} onToggle={toggleActive} />
+          <MethodGroup icon={<Gem className="h-4 w-4 text-sky-300" />} title="Crypto" methods={crypto} onEdit={(m) => setEditing({ id: m.id, draft: toDraft(m) })} onDelete={(id) => setDeleteId(id)} onToggle={toggleActive} />
+          <MethodGroup icon={<Wallet className="h-4 w-4 text-primary" />} title="Wallets" methods={wallet} onEdit={(m) => setEditing({ id: m.id, draft: toDraft(m) })} onDelete={(id) => setDeleteId(id)} onToggle={toggleActive} />
         </>
       )}
 
@@ -156,6 +168,19 @@ export function PaymentMethodsClient() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteId(null) }}
+        title="Delete Payment Method"
+        description="Are you sure you want to delete this payment method?"
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          const target = deleteId
+          setDeleteId(null)
+          if (target !== null) await executeRemove(target)
+        }}
+      />
     </div>
   )
 }

@@ -4,6 +4,8 @@ import { db } from '@/db'
 import { paymentMethods } from '@/db/schemas'
 import { asc } from 'drizzle-orm'
 import { getAdminSession } from '@/lib/admin-session'
+import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { createMockPaymentMethod, listMockPaymentMethods } from '@/lib/mock-admin-store'
 
 const schema = z.object({
   key: z.string().min(1).max(60),
@@ -18,6 +20,9 @@ const schema = z.object({
 
 export async function GET() {
   if (!(await getAdminSession())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ methods: listMockPaymentMethods() })
+  }
   const rows = await db.select().from(paymentMethods).orderBy(asc(paymentMethods.sortOrder))
   return NextResponse.json({ methods: rows })
 }
@@ -28,6 +33,23 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 })
   const d = parsed.data
+  if (!isDatabaseConfigured()) {
+    try {
+      const created = createMockPaymentMethod({
+        key: d.key,
+        label: d.label,
+        network: d.network,
+        cat: d.cat,
+        icon: d.icon,
+        walletAddress: d.walletAddress,
+        active: d.active,
+        sortOrder: d.sortOrder,
+      })
+      return NextResponse.json({ method: created })
+    } catch {
+      return NextResponse.json({ error: 'A payment method with this key already exists' }, { status: 409 })
+    }
+  }
   let inserted
   try {
     const rows = await db
