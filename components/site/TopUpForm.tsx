@@ -8,12 +8,15 @@ import {
   Copy, ArrowRight, ChevronDown, CreditCard,
 } from 'lucide-react'
 import { PackageCard } from '@/components/site/DiamondPackageCard'
-import { SERVERS, discountedPrice } from '@/lib/orders'
+import { SERVERS } from '@/lib/orders'
+import { calculateOrderPricingCents, normalizePackage } from '@/lib/package-catalog'
+import { SUPPORTED_CRYPTO_COMMA_LIST, SUPPORTED_CRYPTO_ICON_IDS } from '@/lib/payment-currencies'
 import { orderedCountries, DIAL_CODES, DIAL_OPTIONS, countryByCode } from '@/lib/countries'
 import { formatNumber } from '@/lib/currencies'
 import { formatUsd } from '@/lib/orders'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
 import { CryptoIcon } from '@/components/site/CryptoIcon'
+import { fireBeginCheckout } from '@/lib/analytics'
 import { cn } from '@/utils/cn'
 import type { PublicPackage, PublicPaymentMethod } from '@/lib/types'
 
@@ -28,11 +31,7 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
   const preselect = params.get('package')
 
   const normalizedPackages = useMemo(
-    () =>
-      packages.map((p) => ({
-        ...p,
-        bonusDiamonds: p.bonusDiamonds > 0 ? p.bonusDiamonds : Math.max(50, Number(p.sortOrder || 1) * 50),
-      })),
+    () => packages.map(normalizePackage),
     [packages],
   )
 
@@ -103,13 +102,9 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
 
   const price = useMemo(() => {
     if (!selected) return { usd: 0, usdt: 0 }
-    let usd = discountedPrice(selected.priceUsd, selected.discountPct)
-    let usdt = discountedPrice(selected.priceUsdt, selected.discountPct)
-    if (couponPct > 0) {
-      usd = +(usd * (1 - couponPct / 100)).toFixed(2)
-      usdt = +(usdt * (1 - couponPct / 100)).toFixed(2)
-    }
-    return { usd, usdt }
+    const computed = calculateOrderPricingCents(selected, couponPct)
+    const usd = computed ? computed.finalUsd : 0
+    return { usd, usdt: usd }
   }, [selected, couponPct])
 
   async function applyCoupon() {
@@ -189,6 +184,11 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
           sessionStorage.setItem(`ff_track_${data.order.orderNumber}`, data.trackingToken)
         } catch {}
       }
+      fireBeginCheckout({
+        packageId: selected.id,
+        diamonds: selected.diamonds + selected.bonusDiamonds,
+        amountUsd: Number(data.order?.amountUsd ?? price.usd),
+      })
       toast.success(t('order_created'))
       if (data.paymentUrl) {
         window.location.href = data.paymentUrl
@@ -315,7 +315,7 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
                 icon={<AtlosCurrencyCluster />}
                 iconClass="bg-transparent"
                 title="Atlos"
-                sub="USDT, BTC, ETH, SOL, LTC, BUSD, BNB"
+                sub={SUPPORTED_CRYPTO_COMMA_LIST}
                 radio={atlosMethods.some((m) => m.key === method)}
               >
                 <div className="grid grid-cols-1 gap-3 sm:max-w-sm">
@@ -369,7 +369,6 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
             const pm = paymentMethods.find((m) => m.key === method)
             const dest = pm?.walletAddress?.trim()
             if (!pm || !dest) return null
-            const isBinance = pm.key === 'BINANCE_PAY'
             return (
               <div className="mt-5 flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
                 <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-white">
@@ -377,10 +376,10 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold text-emerald-300">
-                    {isBinance ? t('pay_binance_title') : t('pay_dest', { method: pm.label })}
+                    {t('pay_dest', { method: pm.label })}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {isBinance ? t('pay_binance_hint') : pm.network}
+                    {pm.network}
                   </p>
                   <div className="mt-1.5 flex items-center gap-2">
                     <code className="flex-1 break-all rounded-lg border border-border bg-background/60 px-3 py-1.5 text-xs font-semibold" translate="no">
@@ -482,7 +481,10 @@ export function TopUpForm({ packages, paymentMethods, freeGift }: {
                   <div className="text-end">
                     <p className="text-xl font-extrabold text-gold" translate="no">{formatUsd(price.usd)}</p>
                     {currency !== 'USD' && (
-                      <p className="text-xs font-semibold text-foreground/80" translate="no">≈ {formatPrice(price.usd)}</p>
+                      <>
+                        <p className="text-xs font-semibold text-foreground/80" translate="no">≈ {formatPrice(price.usd)}</p>
+                        <p className="text-[11px] text-muted-foreground">{t('est_usd_checkout')}</p>
+                      </>
                     )}
                     <p className="text-xs text-muted-foreground" translate="no">{price.usdt.toFixed(2)} USDT</p>
                   </div>
@@ -639,8 +641,8 @@ function PayGroup({
 
 function AtlosCurrencyCluster() {
   return (
-    <span className="flex items-center gap-1" aria-label="USDT, BTC, ETH, SOL, LTC, BUSD and BNB">
-      {(['USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'] as const).map((id) => (
+    <span className="flex items-center gap-1" aria-label={SUPPORTED_CRYPTO_COMMA_LIST}>
+      {SUPPORTED_CRYPTO_ICON_IDS.map((id) => (
         <span key={id} title={id.replace('_TRC20', '')} className="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full bg-white shadow-sm ring-1 ring-black/5">
           <CryptoIcon id={id} className="h-5 w-5" />
         </span>

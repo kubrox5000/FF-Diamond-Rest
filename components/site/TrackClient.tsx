@@ -9,6 +9,7 @@ import { STATUS_META, type OrderStatus } from '@/lib/orders'
 import { formatNumber } from '@/lib/currencies'
 import { formatUsd } from '@/lib/orders'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
+import { fireVerifiedPurchase, isPaidConversionOrderStatus } from '@/lib/analytics'
 import { cn } from '@/utils/cn'
 import type { PublicOrder } from '@/lib/types'
 
@@ -52,6 +53,13 @@ export function TrackClient() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t('tr_failed'))
       setOrders(data.orders)
+      if (Array.isArray(data.orders)) {
+        for (const ord of data.orders as PublicOrder[]) {
+          if (isPaidConversionOrderStatus(ord.status)) {
+            void fireVerifiedPurchase(ord)
+          }
+        }
+      }
       if (data.orders.length === 0) toast.info(t('tr_not_found'))
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('tr_failed'))

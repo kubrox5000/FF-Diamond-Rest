@@ -1,12 +1,18 @@
 import 'server-only'
-import crypto from 'node:crypto'
 import { getSettings } from '@/lib/settings'
-import { resolveAtlosCredentials, type AtlosCredentials } from '@/lib/atlos-config'
+import { hasCompleteAtlosCredentials, resolveAtlosCredentials, type AtlosCredentials } from '@/lib/atlos-config'
 import { db } from '@/db'
 import { orders, type Order } from '@/db/schemas'
-import { and, eq, notInArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
+import { isDatabaseConfigured } from '@/lib/db-ssl'
+import { getMockOrder, transitionMockOrderStatus } from '@/lib/mock-orders'
 import type { PublicPaymentMethod } from '@/lib/types'
+import { SUPPORTED_CRYPTO_DOT_LIST } from '@/lib/payment-currencies'
+import {
+  ATLOS_ALLOWED_SOURCE_STATUSES,
+  verifyAtlosWebhookSignature,
+} from '@/lib/atlos-callback'
 
 // Atlos.io crypto payment gateway (https://atlos.io).
 // Uses environment configuration first, then saved admin settings.
@@ -18,8 +24,8 @@ export async function getAtlosCredentials(): Promise<AtlosCredentials> {
 }
 
 export async function isAtlosConfigured(): Promise<boolean> {
-  const { merchantId } = await getAtlosCredentials()
-  return Boolean(merchantId)
+  const credentials = await getAtlosCredentials()
+  return hasCompleteAtlosCredentials(credentials)
 }
 
 // Verify the webhook signature using the same resolved settings as checkout.
@@ -29,48 +35,51 @@ export async function verifyAtlosWebhook(
   timestampHeader?: string | null,
 ): Promise<boolean> {
   const { apiSecret } = await getAtlosCredentials()
-  if (!apiSecret || !signatureHeader) return false
-
-  try {
-    const message = timestampHeader ? `${timestampHeader}.${rawBody}` : rawBody
-    const expected = crypto
-      .createHmac('sha256', apiSecret)
-      .update(message)
-      .digest('hex')
-
-    return (
-      expected.length === signatureHeader.length &&
-      crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureHeader))
-    )
-  } catch {
-    return false
-  }
+  return verifyAtlosWebhookSignature(rawBody, signatureHeader, timestampHeader, apiSecret)
 }
 
-// Synchronize and mark Atlos order as paid
-export async function markAtlosOrderPaid(orderNumber: string, txId?: string): Promise<Order | null> {
+export async function findAtlosOrder(orderNumber: string): Promise<Order | null> {
+  if (!isDatabaseConfigured()) {
+    return getMockOrder(orderNumber)
+  }
   await ensureOrdersSchema()
   const [order] = await db
     .select()
     .from(orders)
     .where(eq(orders.orderNumber, orderNumber))
     .limit(1)
+  return order ?? null
+}
 
-  if (!order) return null
-
-  if (order.status === 'paid' || order.status === 'completed') {
-    return null
+// Atomically transition an Atlos order to 'paid' ONLY from 'pending_payment' or 'payment_review'.
+// Duplicate, concurrent, late (processing/completed), or cancelled orders return null without side effects.
+export async function markAtlosOrderPaid(orderNumber: string, txId?: string): Promise<Order | null> {
+  if (!isDatabaseConfigured()) {
+    return transitionMockOrderStatus(
+      orderNumber,
+      ATLOS_ALLOWED_SOURCE_STATUSES,
+      { status: 'paid', ...(txId ? { txId } : {}) },
+    )
   }
 
-  const [updated] = await db
-    .update(orders)
-    .set({
-      status: 'paid',
-      txId: txId || order.txId,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(orders.id, order.id), notInArray(orders.status, ['paid', 'completed'])))
-    .returning()
+  await ensureOrdersSchema()
+  const [updated] = await db.transaction(async (tx) => {
+    return tx
+      .update(orders)
+      .set({
+        status: 'paid',
+        txId: txId ? txId : sql`${orders.txId}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(orders.orderNumber, orderNumber),
+          eq(orders.paymentMethod, ATLOS_KEY),
+          inArray(orders.status, [...ATLOS_ALLOWED_SOURCE_STATUSES]),
+        ),
+      )
+      .returning()
+  })
 
   return updated ?? null
 }
@@ -83,7 +92,7 @@ export async function withAtlos(methods: PublicPaymentMethod[]): Promise<PublicP
       id: 0,
       key: ATLOS_KEY,
       label: 'Atlos (Crypto)',
-      network: 'USDT · BTC · ETH · SOL · LTC…',
+      network: SUPPORTED_CRYPTO_DOT_LIST,
       cat: 'crypto',
       icon: 'atlos',
       walletAddress: '',

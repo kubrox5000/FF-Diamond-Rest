@@ -23,3 +23,8 @@ export async function resolveAtlosCredentials(
       settings.atlosApiSecret?.trim() || undefined,
   }
 }
+
+export function hasCompleteAtlosCredentials(credentials: AtlosCredentials): boolean {
+  return Boolean(credentials.merchantId?.trim() && credentials.apiSecret?.trim())
+}
+

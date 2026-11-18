@@ -41,7 +41,9 @@ export interface SiteSettings {
   youtube: string
   tiktok: string
   facebookPixelId: string
+  gaMeasurementId: string
   googleAdsPixelId: string
+  googleAdsConversionLabel: string
   tiktokPixelId: string
   snapchatPixelId: string
   telegramBotToken: string
@@ -88,7 +90,9 @@ const DEFAULTS: SiteSettings = {
   youtube: '',
   tiktok: '',
   facebookPixelId: '',
+  gaMeasurementId: '',
   googleAdsPixelId: '',
+  googleAdsConversionLabel: '',
   tiktokPixelId: '',
   snapchatPixelId: '',
   telegramBotToken: '',

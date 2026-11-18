@@ -8,8 +8,6 @@ type TitleKey =
   | 'title_home'
   | 'title_topup'
   | 'title_track'
-  | 'title_binance'
-  | 'title_payment_review'
   | 'title_payment'
   | 'title_terms'
   | 'title_privacy'

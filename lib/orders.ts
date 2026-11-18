@@ -14,7 +14,6 @@ export const SERVERS = [
 export const PAYMENT_METHODS = [
   { id: 'USDT_TRC20', label: 'USDT (TRC20)', network: 'Tron Network', icon: 'trc20', cat: 'crypto' },
   { id: 'USDT_BEP20', label: 'USDT (BEP20)', network: 'BNB Smart Chain', icon: 'bep20', cat: 'crypto' },
-  { id: 'BINANCE_PAY', label: 'Binance Pay', network: 'Binance App', icon: 'binance', cat: 'wallet' },
   { id: 'BTC', label: 'BTC', network: 'Bitcoin Network', icon: 'btc', cat: 'crypto' },
   { id: 'ETH', label: 'ETH', network: 'Ethereum Network', icon: 'eth', cat: 'crypto' },
   { id: 'BNB', label: 'BNB', network: 'BNB Smart Chain', icon: 'bnb', cat: 'crypto' },
@@ -79,7 +78,10 @@ export function formatUsdt(v: string | number): string {
 
 export function discountedPrice(price: string | number, discountPct: number): number {
   const n = typeof price === 'string' ? parseFloat(price) : price
-  return +(n * (1 - discountPct / 100)).toFixed(2)
+  if (!Number.isFinite(n) || n <= 0) return 0
+  const baseCents = Math.round(n * 100)
+  const effectiveCents = discountPct > 0 ? discountedCents(baseCents, discountPct) : baseCents
+  return (effectiveCents ?? baseCents) / 100
 }
 
 export function validateDiscountPct(value: unknown): number | null {

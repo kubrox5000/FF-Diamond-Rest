@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/db'
-import { packages, orders, coupons, paymentMethods } from '@/db/schemas'
+import { orders, coupons, paymentMethods } from '@/db/schemas'
 import { eq, sql } from 'drizzle-orm'
-import { discountedCents, generateOrderNumber } from '@/lib/orders'
-import { getOfficialPackage } from '@/lib/package-catalog'
+import { generateOrderNumber } from '@/lib/orders'
+import { calculateOrderPricingCents } from '@/lib/package-catalog'
+import { getStorefrontPackageById } from '@/lib/packages-server'
 import { getSettings } from '@/lib/settings'
 import { HELEKET_KEY, isHeleketConfigured, createHeleketInvoice } from '@/lib/heleket'
 import { ATLOS_KEY, isAtlosConfigured } from '@/lib/atlos'
 import { PLISIO_KEY, createPlisioInvoice, isPlisioConfigured } from '@/lib/plisio'
+import { STOREFRONT_CRYPTO_METHOD_KEYS } from '@/lib/payment-currencies'
 import { enforceRateLimit } from '@/lib/distributed-rate-limit'
 import { isDatabaseConfigured } from '@/lib/db-ssl'
 import { ensureOrdersSchema } from '@/lib/ensure-orders-schema'
 import { createMockOrder } from '@/lib/mock-orders'
 import {
   findMockCoupon,
-  getMockPackage,
   incrementMockCouponUsage,
   listMockPaymentMethods,
 } from '@/lib/mock-admin-store'
@@ -43,14 +44,12 @@ export async function POST(req: NextRequest) {
   }
   const data = parsed.data
 
-  // ── Fetch package + settings + payment method + coupon in parallel ──────────
+  // ── Fetch authoritative package + settings + payment method + coupon in parallel ──
   const couponCode = data.couponCode ? data.couponCode.trim().toUpperCase() : null
   const dbReady = isDatabaseConfigured()
 
-  const [pkgRows, settingsData, pmRows, couponRows] = await Promise.all([
-    dbReady
-      ? db.select().from(packages).where(eq(packages.id, data.packageId)).limit(1)
-      : Promise.resolve([] as typeof packages.$inferSelect[]),
+  const [pkg, settingsData, pmRows, couponRows] = await Promise.all([
+    getStorefrontPackageById(data.packageId),
     getSettings(),
     dbReady
       ? db.select().from(paymentMethods).where(eq(paymentMethods.key, data.paymentMethod)).limit(1)
@@ -60,46 +59,22 @@ export async function POST(req: NextRequest) {
       : Promise.resolve([] as typeof coupons.$inferSelect[]),
   ])
 
-  const databasePackage = pkgRows[0]
-  const mockPkg = !dbReady ? getMockPackage(data.packageId) : undefined
-  const officialPkg = !dbReady ? getOfficialPackage(data.packageId) : undefined
-
-  let resolvedDatabasePkg:
-    | (typeof databasePackage & { priceCents: number })
-    | undefined
-  if (databasePackage && databasePackage.active) {
-    const rawCents = Math.round(parseFloat(String(databasePackage.priceUsd)) * 100)
-    const effectiveCents =
-      databasePackage.discountPct > 0
-        ? discountedCents(rawCents, databasePackage.discountPct)
-        : rawCents
-    if (effectiveCents !== null && Number.isSafeInteger(effectiveCents) && effectiveCents > 0) {
-      resolvedDatabasePkg = { ...databasePackage, priceCents: effectiveCents }
-    }
-  }
-
-  const resolvedMockPkg = mockPkg
-    ? { ...mockPkg, priceCents: Math.round(parseFloat(mockPkg.priceUsd) * 100) }
-    : undefined
-  const pkg = dbReady
-    ? resolvedDatabasePkg
-    : (officialPkg ?? resolvedMockPkg)
   if (!pkg || !pkg.active) {
     return NextResponse.json({ error: 'Package not found' }, { status: 404 })
   }
 
-  // ── Apply coupon (if valid) using integer cents ───────────────────────────
-  let amountCents = pkg.priceCents
+  // ── Apply coupon (if valid) using authoritative integer-cent calculation ──
   let appliedCoupon: string | null = null
+  let couponPct = 0
 
   const mockCoupon = !dbReady && couponCode ? findMockCoupon(couponCode) : undefined
   const coupon = couponRows[0] ?? mockCoupon
   if (couponCode && coupon && coupon.active && (!coupon.maxUses || coupon.usedCount < coupon.maxUses)) {
-    const discountedAmountCents = discountedCents(amountCents, coupon.discountPct)
-    if (discountedAmountCents === null) {
+    couponPct = coupon.discountPct
+    const pricingCheck = calculateOrderPricingCents(pkg, couponPct)
+    if (!pricingCheck) {
       return NextResponse.json({ error: 'Invalid coupon discount' }, { status: 400 })
     }
-    amountCents = discountedAmountCents
     appliedCoupon = couponCode
     // Fire coupon usage increment without blocking the response
     if (dbReady) {
@@ -114,13 +89,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+  const pricing = calculateOrderPricingCents(pkg, couponPct)
+  if (!pricing || !Number.isSafeInteger(pricing.finalCents) || pricing.finalCents <= 0) {
     return NextResponse.json({ error: 'Invalid order total' }, { status: 400 })
   }
 
-  const amountUsd = amountCents / 100
-  const amountUsdt = amountUsd
-  const allowedMethods = new Set(['USDT_TRC20', 'BTC', 'ETH', 'SOL', 'LTC', 'BUSD', 'BNB'])
+  const amountUsd = pricing.finalUsd
+  const amountUsdt = pricing.finalUsd
+  const allowedMethods = new Set<string>(STOREFRONT_CRYPTO_METHOD_KEYS)
   if (await isAtlosConfigured()) allowedMethods.add(ATLOS_KEY)
   if (isHeleketConfigured()) allowedMethods.add(HELEKET_KEY)
   if (isPlisioConfigured()) allowedMethods.add(PLISIO_KEY)
@@ -137,7 +113,6 @@ export async function POST(req: NextRequest) {
   const WALLETS: Record<string, string | undefined> = {
     USDT_TRC20:  settingsData.walletTrc20,
     USDT_BEP20:  settingsData.walletBep20,
-    BINANCE_PAY: settingsData.binancePayId,
     BTC:         settingsData.walletBtc,
     ETH:         settingsData.walletEth,
     BNB:         settingsData.walletBnb,
@@ -197,15 +172,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Gift diamonds start at 50 for package one and increase by 50 per package.
-  const giftDiamonds = pkg.bonusDiamonds > 0 ? pkg.bonusDiamonds : pkg.sortOrder * 50
+  const totalDiamonds = pkg.diamonds + pkg.bonusDiamonds
 
   // ── Insert order ──────────────────────────────────────────────────────────
   const orderValues = {
     orderNumber,
     trackingToken,
     packageId:     pkg.id,
-    diamonds:      pkg.diamonds + giftDiamonds,
+    diamonds:      totalDiamonds,
     playerUid:     data.playerUid,
     nickname:      data.nickname || null,
     server:        data.server,

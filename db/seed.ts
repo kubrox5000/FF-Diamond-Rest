@@ -18,17 +18,17 @@ async function seed() {
 
   await sql`DELETE FROM packages`
   await sql`INSERT INTO packages (diamonds, bonus_diamonds, price_usd, price_usdt, discount_pct, popular, flash_sale, delivery_eta, sort_order) VALUES
-    (310, 50, 1.00, 1.00, 0, false, false, '1-5 minutes', 1),
-    (520, 100, 2.00, 2.00, 0, false, false, '1-5 minutes', 2),
-    (1060, 150, 3.00, 3.00, 0, true, false, '1-5 minutes', 3),
-    (2180, 200, 5.00, 5.00, 0, true, false, '1-5 minutes', 4),
-    (5600, 250, 7.00, 7.00, 0, true, false, '1-5 minutes', 5),
-    (6600, 300, 8.00, 8.00, 0, false, false, '1-5 minutes', 6),
-    (7700, 350, 9.00, 9.00, 0, false, false, '1-5 minutes', 7),
-    (8800, 400, 10.00, 10.00, 0, false, false, '1-5 minutes', 8),
-    (9900, 450, 11.00, 11.00, 0, false, false, '1-5 minutes', 9),
-    (10500, 500, 12.00, 12.00, 0, true, false, '1-5 minutes', 10),
-    (11500, 550, 13.00, 13.00, 0, false, false, '1-5 minutes', 11)`
+    (310, 50, 1.49, 1.49, 0, false, false, '1-5 minutes', 1),
+    (520, 100, 2.49, 2.49, 0, false, false, '1-5 minutes', 2),
+    (1060, 150, 3.49, 3.49, 0, true, false, '1-5 minutes', 3),
+    (2180, 200, 5.49, 5.49, 0, true, false, '1-5 minutes', 4),
+    (5600, 250, 7.49, 7.49, 0, true, false, '1-5 minutes', 5),
+    (6600, 300, 8.49, 8.49, 0, false, false, '1-5 minutes', 6),
+    (7700, 350, 9.49, 9.49, 0, false, false, '1-5 minutes', 7),
+    (8800, 400, 10.49, 10.49, 0, false, false, '1-5 minutes', 8),
+    (9900, 450, 11.49, 11.49, 0, false, false, '1-5 minutes', 9),
+    (10500, 500, 12.49, 12.49, 0, true, false, '1-5 minutes', 10),
+    (11500, 550, 13.49, 13.49, 0, false, false, '1-5 minutes', 11)`
 
   await sql`DELETE FROM reviews`
   await sql`INSERT INTO reviews (name, rating, title, comment, country, country_code, package_label, verified, created_at) VALUES
@@ -77,7 +77,7 @@ async function seed() {
     siteName: 'FF Diamond',
     walletTrc20: 'TXk8rQSAENoUmYY6fNXhZQ3xW6y1kY5abc',
     walletBep20: '0x8fD3a9b0C21e4A5c6F7d8E9a0B1c2D3e4F5a6B7c',
-    binancePayId: '123456789',
+    binancePayId: '',
     walletBtc: 'bc1qxyzabc123def456ghi789jkl012mno345pqr678',
     walletEth: '0x1a2B3c4D5e6F7a8B9c0D1e2F3a4B5c6D7e8F9a0B',
     walletBnb: '0x9f8e7d6c5b4a3928171605040302010098a7b6c5',

@@ -55,6 +55,23 @@ export function updateMockOrder(
   return updated
 }
 
+export function transitionMockOrderStatus(
+  orderNumber: string,
+  allowedFrom: readonly string[],
+  patch: Partial<Order> & { status: string },
+): Order | null {
+  const store = getStore()
+  const existing = store.get(orderNumber.trim())
+  if (!existing || !allowedFrom.includes(existing.status)) return null
+  const updated: Order = {
+    ...existing,
+    ...patch,
+    updatedAt: new Date(),
+  }
+  store.set(existing.orderNumber, updated)
+  return updated
+}
+
 export function updateMockOrderById(id: number, patch: Partial<Order>): Order | null {
   const existing = getMockOrderById(id)
   if (!existing) return null

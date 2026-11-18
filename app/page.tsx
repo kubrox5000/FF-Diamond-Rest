@@ -5,13 +5,8 @@ import { AnnouncementBanner } from '@/components/site/AnnouncementBanner'
 import { HomeContent } from '@/components/geo/HomeContent'
 import { LocalizedTitle } from '@/components/geo/LocalizedTitle'
 import { getSettings } from '@/lib/settings'
-import type { PublicPackage } from '@/lib/types'
 import { localizedPageMetadata } from '@/lib/seo'
-import { listMockPackages } from '@/lib/mock-admin-store'
-import { isDatabaseConfigured } from '@/lib/db-ssl'
-import { db } from '@/db'
-import { packages } from '@/db/schemas'
-import { eq, asc } from 'drizzle-orm'
+import { listStorefrontPackages } from '@/lib/packages-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,17 +15,10 @@ export async function generateMetadata() {
 }
 
 export default async function HomePage() {
-  const settings = await getSettings()
-
-  let pkgRows: PublicPackage[] = listMockPackages().filter((p) => p.active)
-  if (isDatabaseConfigured()) {
-    try {
-      const dbRows = await db.select().from(packages).where(eq(packages.active, true)).orderBy(asc(packages.sortOrder))
-      if (dbRows.length > 0) pkgRows = dbRows as unknown as PublicPackage[]
-    } catch {
-      // fall back to mock/official catalog
-    }
-  }
+  const [settings, pkgRows] = await Promise.all([
+    getSettings(),
+    listStorefrontPackages(),
+  ])
 
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://ff-diamond.rest'
 

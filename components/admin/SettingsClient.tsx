@@ -58,8 +58,11 @@ export function SettingsClient() {
           telegram: s.telegram, discord: s.discord,
           instagram: s.instagram, facebook: s.facebook, twitter: s.twitter, youtube: s.youtube, tiktok: s.tiktok,
           facebookPixelId: s.facebookPixelId,
-          googleAdsPixelId: s.googleAdsPixelId, tiktokPixelId: s.tiktokPixelId, snapchatPixelId: s.snapchatPixelId,
-          walletTrc20: s.walletTrc20, walletBep20: s.walletBep20, binancePayId: s.binancePayId,
+          gaMeasurementId: s.gaMeasurementId,
+          googleAdsPixelId: s.googleAdsPixelId,
+          googleAdsConversionLabel: s.googleAdsConversionLabel,
+          tiktokPixelId: s.tiktokPixelId, snapchatPixelId: s.snapchatPixelId,
+          walletTrc20: s.walletTrc20, walletBep20: s.walletBep20,
           walletBtc: s.walletBtc, walletEth: s.walletEth, walletBnb: s.walletBnb, walletUsdc: s.walletUsdc,
           walletSol: s.walletSol,
           paymentWise: s.paymentWise, paymentPayoneer: s.paymentPayoneer, paymentSkrill: s.paymentSkrill,
@@ -199,7 +202,9 @@ export function SettingsClient() {
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Text label="Facebook Pixel ID" value={str(draft.facebookPixelId)} onChange={(v) => set('facebookPixelId', v)} placeholder="e.g. 123456789012345" mono />
-          <Text label="Google Ads ID (gtag)" value={str(draft.googleAdsPixelId)} onChange={(v) => set('googleAdsPixelId', v)} placeholder="e.g. AW-123456789" mono />
+          <Text label="GA4 Measurement ID" value={str(draft.gaMeasurementId)} onChange={(v) => set('gaMeasurementId', v)} placeholder="e.g. G-XXXXXXXXXX" mono />
+          <Text label="Google Ads ID (gtag)" value={str(draft.googleAdsPixelId)} onChange={(v) => set('googleAdsPixelId', v)} placeholder="e.g. AW-XXXXXXXXXX" mono />
+          <Text label="Google Ads Conversion Label" value={str(draft.googleAdsConversionLabel)} onChange={(v) => set('googleAdsConversionLabel', v)} placeholder="e.g. AbCdEfGhIjK" mono />
           <Text label="TikTok Ads Pixel ID" value={str(draft.tiktokPixelId)} onChange={(v) => set('tiktokPixelId', v)} placeholder="e.g. CXXXXXXXXXXXXXXX" mono />
           <Text label="Snapchat Ads Pixel ID" value={str(draft.snapchatPixelId)} onChange={(v) => set('snapchatPixelId', v)} placeholder="e.g. abcdef12-3456-7890-abcd-ef1234567890" mono />
         </div>
@@ -250,7 +255,6 @@ export function SettingsClient() {
         <div className="grid gap-3 sm:grid-cols-2">
           <Text label="USDT (TRC20)" value={str(draft.walletTrc20)} onChange={(v) => set('walletTrc20', v)} mono />
           <Text label="USDT (BEP20)" value={str(draft.walletBep20)} onChange={(v) => set('walletBep20', v)} mono />
-          <Text label="Binance Pay ID" value={str(draft.binancePayId)} onChange={(v) => set('binancePayId', v)} mono />
           <Text label="BTC" value={str(draft.walletBtc)} onChange={(v) => set('walletBtc', v)} mono />
           <Text label="ETH" value={str(draft.walletEth)} onChange={(v) => set('walletEth', v)} mono />
           <Text label="BNB" value={str(draft.walletBnb)} onChange={(v) => set('walletBnb', v)} mono />

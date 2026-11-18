@@ -8,6 +8,7 @@ import {
   ShieldCheck, Clock, Gem, ArrowRight, HeadphonesIcon,
 } from 'lucide-react'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
+import { fireVerifiedPurchase, isPaidConversionOrderStatus } from '@/lib/analytics'
 
 const COPY = {
   ar: {
@@ -94,6 +95,7 @@ export function PaymentConfirmedClient() {
   const [copied, setCopied] = useState<'order' | 'token' | null>(null)
   const [show, setShow] = useState(false)
   const [trackingToken, setTrackingToken] = useState(urlToken)
+  const [verifiedStatus, setVerifiedStatus] = useState<string | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setShow(true), 50)
@@ -111,6 +113,26 @@ export function PaymentConfirmedClient() {
       if (saved) setTrackingToken(saved)
     } catch {}
   }, [orderNumber, urlToken])
+
+  useEffect(() => {
+    if (!orderNumber || !trackingToken) return
+    let cancelled = false
+    fetch(`/api/orders/${encodeURIComponent(orderNumber)}`, {
+      headers: { 'x-order-tracking-token': trackingToken },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d?.order) return
+        setVerifiedStatus(String(d.order.status ?? ''))
+        if (isPaidConversionOrderStatus(d.order.status)) {
+          void fireVerifiedPurchase(d.order)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [orderNumber, trackingToken])
 
   function copyValue(text: string, which: 'order' | 'token') {
     navigator.clipboard?.writeText(text).catch(() => {})
@@ -196,8 +218,13 @@ export function PaymentConfirmedClient() {
 
             <div className="flex items-center justify-between py-3">
               <span className="text-sm text-muted-foreground">{copy.statusLabel}</span>
-              <span className="flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-300">
-                <Clock className="h-3 w-3" /> {copy.inReview}
+              <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                isPaidConversionOrderStatus(verifiedStatus)
+                  ? 'bg-emerald-500/15 text-emerald-300'
+                  : 'bg-amber-500/15 text-amber-300'
+              }`}>
+                {isPaidConversionOrderStatus(verifiedStatus) ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                {isPaidConversionOrderStatus(verifiedStatus) ? (verifiedStatus === 'completed' ? 'Completed' : 'Paid') : copy.inReview}
               </span>
             </div>
           </div>

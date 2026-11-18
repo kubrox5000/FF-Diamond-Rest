@@ -88,7 +88,7 @@ function DiamondPackageCardBase({ pkg, selected, onSelect, ctaLabel }: Props) {
         )}
         {currency !== 'USD' && (
           <span className="text-xs font-semibold text-muted-foreground">
-            ({formatPrice(finalUsd)})
+            (≈ {formatPrice(finalUsd)})
           </span>
         )}
       </div>

@@ -12,8 +12,6 @@ export type PageTitleKey =
   | 'title_home'
   | 'title_topup'
   | 'title_track'
-  | 'title_binance'
-  | 'title_payment_review'
   | 'title_payment'
   | 'title_terms'
   | 'title_privacy'
@@ -25,8 +23,6 @@ const pagePath: Record<PageTitleKey, string | undefined> = {
   title_home: '/',
   title_topup: '/top-up',
   title_track: '/track',
-  title_binance: '/binance-pay',
-  title_payment_review: '/binance-pay/review',
   title_payment: undefined,
   title_terms: '/terms',
   title_privacy: '/privacy',
@@ -58,7 +54,7 @@ export async function localizedPageMetadata(pageKey: PageTitleKey): Promise<Meta
   const path = pagePath[pageKey]
   const url = path ? new URL(path, siteUrl).toString() : undefined
 
-  const isPrivate = pageKey === 'title_payment' || pageKey === 'title_payment_review'
+  const isPrivate = pageKey === 'title_payment'
   const meta: Metadata = {
     title,
     description,

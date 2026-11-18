@@ -408,12 +408,33 @@ export function formatNumber(n: number): string {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n)
 }
 
-/** Format a USD base price into the active display currency (whole number). */
-export function formatLocalPrice(usd: number, lang: Lang, currency: string): string {
-  const info = CURRENCIES[currency] ?? CURRENCIES.USD
-  // Drop any fractional part so prices always show as whole numbers (203.9 → 203).
-  const amount = Math.floor(usd * info.rate)
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  'JPY', 'KRW', 'VND', 'IDR', 'CLP', 'PYG', 'IQD', 'LBP', 'HUF',
+])
+
+const THREE_DECIMAL_CURRENCIES = new Set([
+  'KWD', 'BHD', 'OMR', 'JOD', 'TND', 'LYD',
+])
+
+export function currencyFractionDigits(currency: string): number {
+  const code = currency.trim().toUpperCase()
+  if (ZERO_DECIMAL_CURRENCIES.has(code)) return 0
+  if (THREE_DECIMAL_CURRENCIES.has(code)) return 3
+  return 2
+}
+
+/** Format a USD base price into the active display currency with standard decimal precision. */
+export function formatLocalPrice(usd: number, _lang: Lang, currency: string): string {
+  const safeUsd = Number.isFinite(usd) && usd > 0 ? usd : 0
+  const info = CURRENCIES[currency.trim().toUpperCase()] ?? CURRENCIES.USD
+  const decimals = currencyFractionDigits(info.code)
+  const factor = 10 ** decimals
+  const amount = Math.round((safeUsd * info.rate + Number.EPSILON) * factor) / factor
   // Keep Latin (Western) digits even in Arabic; only the currency symbol changes.
-  const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
+  const nf = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
   return `${nf.format(amount)} ${info.symbol}`
 }
+

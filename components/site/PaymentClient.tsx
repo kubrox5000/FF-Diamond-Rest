@@ -7,6 +7,8 @@ import { Copy, Check, Clock, Upload, Loader2, ShieldCheck, ArrowRight, AlertTria
 import { PAYMENT_METHODS } from '@/lib/orders'
 import { CryptoIcon } from '@/components/site/CryptoIcon'
 import { useLocale } from '@/components/geo/GeoLocaleProvider'
+import { SUPPORTED_CRYPTO_CURRENCIES } from '@/lib/payment-currencies'
+import { fireVerifiedPurchase, isPaidConversionOrderStatus } from '@/lib/analytics'
 import type { PublicOrder } from '@/lib/types'
 
 export function PaymentClient({ order }: { order: PublicOrder }) {
@@ -28,6 +30,12 @@ export function PaymentClient({ order }: { order: PublicOrder }) {
       if (saved) setTrackingToken(saved)
     } catch {}
   }, [order.orderNumber])
+
+  useEffect(() => {
+    if (isPaidConversionOrderStatus(order.status)) {
+      void fireVerifiedPurchase(order)
+    }
+  }, [order])
 
   // Load live payment methods from the DB (falls back to static defaults).
   useEffect(() => {
@@ -130,7 +138,7 @@ export function PaymentClient({ order }: { order: PublicOrder }) {
     return <PlisioPanel order={order} expired={expired} mins={mins} secs={secs} trackUrl={trackUrl} />
   }
   if (order.paymentMethod === 'ATLOS') {
-    return <HostedPaymentPanel order={order} expired={expired} mins={mins} secs={secs} trackUrl={trackUrl} />
+    return <HostedPaymentPanel order={order} expired={expired} mins={mins} secs={secs} trackUrl={trackUrl} trackingToken={trackingToken} />
   }
 
   return (
@@ -422,7 +430,7 @@ function PlisioPanel({ order, expired, mins, secs, trackUrl }: { order: PublicOr
   )
 }
 
-function HostedPaymentPanel({ order, expired, mins, secs, trackUrl }: { order: PublicOrder; expired: boolean; mins: number; secs: number; trackUrl: string }) {
+function HostedPaymentPanel({ order, expired, mins, secs, trackUrl, trackingToken }: { order: PublicOrder; expired: boolean; mins: number; secs: number; trackUrl: string; trackingToken: string }) {
   const router = useRouter()
   const { t, lang } = useLocale()
   const paid = ['paid', 'processing', 'completed'].includes(order.status)
@@ -450,6 +458,23 @@ function HostedPaymentPanel({ order, expired, mins, secs, trackUrl }: { order: P
     document.body.appendChild(script)
   }, [])
 
+  async function verifyServerPaidAndTrack() {
+    if (trackingToken) {
+      try {
+        const res = await fetch(`/api/orders/${encodeURIComponent(order.orderNumber)}`, {
+          headers: { 'x-order-tracking-token': trackingToken },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.order && isPaidConversionOrderStatus(data.order.status)) {
+            await fireVerifiedPurchase(data.order)
+          }
+        }
+      } catch {}
+    }
+    router.refresh()
+  }
+
   function launchPayment() {
     if (!atlosMerchantId) {
       toast.error(t('pay_atlos_unavailable'))
@@ -472,11 +497,11 @@ function HostedPaymentPanel({ order, expired, mins, secs, trackUrl }: { order: P
       userEmail: order.email || undefined,
       onSuccess: () => {
         toast.success(t('pay_heleket_paid'))
-        router.refresh()
+        void verifyServerPaidAndTrack()
       },
       onCompleted: () => {
         toast.success(t('pay_heleket_paid'))
-        router.refresh()
+        void verifyServerPaidAndTrack()
       },
       onCanceled: () => {
         toast.info(t('pay_atlos_closed'))
@@ -523,12 +548,11 @@ function HostedPaymentPanel({ order, expired, mins, secs, trackUrl }: { order: P
               <span className="text-sm font-medium text-muted-foreground">USD</span>
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-primary/15 pt-4" aria-label={t('pay_atlos_currencies')}>
-              {['USDT', 'BTC', 'ETH', 'SOL'].map((coin) => (
+              {SUPPORTED_CRYPTO_CURRENCIES.map((coin) => (
                 <span key={coin} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium" dir="ltr" translate="no">
                   <CryptoIcon id={coin} className="h-4 w-4" />{coin}
                 </span>
               ))}
-              <span className="text-xs text-muted-foreground">{t('pay_atlos_more')}</span>
             </div>
           </div>
 

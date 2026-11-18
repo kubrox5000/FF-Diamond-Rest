@@ -22,3 +22,17 @@ export function publicOrderDetails(order: Order) {
     updatedAt: order.updatedAt,
   }
 }
+
+export function authorizeMarkReviewed(
+  order: Pick<Order, 'trackingToken' | 'status'> | null | undefined,
+  suppliedToken: string | null,
+): { ok: true; shouldTransition: boolean } | { ok: false; statusCode: 401 | 404; error: string } {
+  if (!suppliedToken) {
+    return { ok: false, statusCode: 401, error: 'Missing tracking token' }
+  }
+  if (!order || !hasValidTrackingToken(order.trackingToken, suppliedToken)) {
+    return { ok: false, statusCode: 404, error: 'Order not found' }
+  }
+  return { ok: true, shouldTransition: order.status === 'pending_payment' }
+}
+

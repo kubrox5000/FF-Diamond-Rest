@@ -158,13 +158,6 @@ export function CryptoIcon({
           <path fill="#FFF" d="M12.2 22.8h11.1l-.8 3H7.1l1.7-6.3-2.2.8.7-2.6 2.2-.8 2.6-9.7h4.9l-2.4 8.9 2.2-.8-.7 2.6-2.2.8-1.7 6.1z" />
         </svg>
       )
-    case 'BUSD':
-      return (
-        <svg viewBox="0 0 32 32" className={className} aria-label="BUSD">
-          <circle fill="#F0B90B" cx="16" cy="16" r="16" />
-          <path fill="#FFF" d="m16 5.8 2.4 2.4-7.8 7.8-2.4-2.4L16 5.8zm4.8 4.8 2.4 2.4-7.8 7.8-2.4-2.4 7.8-7.8zm-9.6 4.8 2.4 2.4-4.8 4.8-2.4-2.4 4.8-4.8zm9.6 0 2.4 2.4-7.8 7.8-2.4-2.4 7.8-7.8z" />
-        </svg>
-      )
     case 'SOL':
       return (
         <svg viewBox="0 0 32 32" className={className} aria-label="SOL">
